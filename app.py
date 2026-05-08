@@ -537,7 +537,7 @@ if "Teacher" in view:
 
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
-    # ── Filters + Table
+# ── Filters + Table
     col_f1, col_f2, col_f3 = st.columns([2, 2, 3])
     with col_f1:
         risk_filter = st.selectbox("Filter by Risk", ["All", "HIGH", "MEDIUM", "LOW"])
@@ -551,10 +551,10 @@ if "Teacher" in view:
 
     st.markdown("<div class='section-header'>At-Risk Student Table</div>", unsafe_allow_html=True)
 
+    # 1. Define your helper functions clearly
     def color_risk(val):
-        # Updated lines 565-566
-        .map(color_risk, subset=["Risk Level"])\
-        .map(color_prob, subset=["Fail Prob (%)"])\
+        if val == "HIGH": return "color: #f87171; font-weight: 700"
+        if val == "MEDIUM": return "color: #fbbf24; font-weight: 700"
         return "color: #34d399; font-weight: 700"
 
     def color_prob(val):
@@ -562,11 +562,28 @@ if "Teacher" in view:
         if val >= 40: return "color: #fbbf24"
         return "color: #34d399"
 
-    styled = filtered.style\
-        .applymap(color_risk, subset=["Risk Level"])\
-        .applymap(color_prob, subset=["Fail Prob (%)"])\
-        .set_properties(**{"background-color": "#0d1117", "color": "#94a3b8", "border": "1px solid #1e2d40"})\
-        .set_table_styles([{"selector": "th", "props": [("background-color", "#111827"), ("color", "#6b7a99"), ("font-size", "0.78rem"), ("text-transform", "uppercase"), ("letter-spacing", "0.06em")]}])
+    # 2. Apply styling using .map() (replaces .applymap for Pandas 2.0+)
+    # Wrap in parentheses to avoid SyntaxErrors with backslashes
+    styled = (
+        filtered.style
+        .map(color_risk, subset=["Risk Level"])
+        .map(color_prob, subset=["Fail Prob (%)"])
+        .set_properties(**{
+            "background-color": "#0d1117", 
+            "color": "#94a3b8", 
+            "border": "1px solid #1e2d40"
+        })
+        .set_table_styles([{
+            "selector": "th", 
+            "props": [
+                ("background-color", "#111827"), 
+                ("color", "#6b7a99"), 
+                ("font-size", "0.78rem"), 
+                ("text-transform", "uppercase"), 
+                ("letter-spacing", "0.06em")
+            ]
+        }])
+    )
 
     st.dataframe(styled, use_container_width=True, height=320)
 
