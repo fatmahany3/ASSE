@@ -552,8 +552,9 @@ if "Teacher" in view:
     st.markdown("<div class='section-header'>At-Risk Student Table</div>", unsafe_allow_html=True)
 
     def color_risk(val):
-        if val == "HIGH":   return "color: #f87171; font-weight: 700"
-        if val == "MEDIUM": return "color: #fbbf24; font-weight: 700"
+        # Updated lines 565-566
+        .map(color_risk, subset=["Risk Level"])\
+        .map(color_prob, subset=["Fail Prob (%)"])\
         return "color: #34d399; font-weight: 700"
 
     def color_prob(val):
