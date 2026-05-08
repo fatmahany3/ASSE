@@ -1,0 +1,51 @@
+student_id,fail_prob,risk_level,rec_1,rec_2,rec_3
+0,0.961787959806379,HIGH,General Coaching,Peer Support Group,Academic Office Hours
+1,0.18520246829200726,LOW,General Coaching,Peer Support Group,Academic Office Hours
+2,1.4748622323423888e-09,LOW,General Coaching,Peer Support Group,Academic Office Hours
+3,1.4870332374017359e-05,LOW,General Coaching,Peer Support Group,Academic Office Hours
+4,0.000525048520132021,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Brilliant.org — Problem-Solving & Critical Thinking
+5,2.7747825681601057e-07,LOW,General Coaching,Peer Support Group,Academic Office Hours
+6,0.02054211223398772,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Sleep Foundation — Healthy Sleep Guide for Students
+7,0.59233397100473,MEDIUM,YouTube EDU — Free Educational Video Library,OpenStax — Free Peer-Reviewed Textbooks,Project Gutenberg — Free Books & Study Materials
+8,0.13271124515845134,LOW,Brilliant.org — Problem-Solving & Critical Thinking,edX — University-Level Online Courses,Notion — Student Study Planner Template
+9,3.7649167325959354e-06,LOW,YouTube EDU — Free Educational Video Library,OpenStax — Free Peer-Reviewed Textbooks,Project Gutenberg — Free Books & Study Materials
+10,0.4792459134025506,MEDIUM,YouTube EDU — Free Educational Video Library,OpenStax — Free Peer-Reviewed Textbooks,Project Gutenberg — Free Books & Study Materials
+11,0.7011247442996823,HIGH,Duolingo — Language Learning (Cognitive Boost),Crash Course — Science & Humanities Videos,Growth Mindset — Carol Dweck (Book Summary)
+12,9.256773014776343e-09,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Sleep Foundation — Healthy Sleep Guide for Students
+13,0.0008244487444665216,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Brilliant.org — Problem-Solving & Critical Thinking
+14,0.000731578995727844,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Sleep Foundation — Healthy Sleep Guide for Students
+15,0.38134181825203384,LOW,YouTube EDU — Free Educational Video Library,OpenStax — Free Peer-Reviewed Textbooks,Project Gutenberg — Free Books & Study Materials
+16,0.17215437398711675,LOW,Anki — Spaced Repetition Flashcards,Notion — Student Study Planner Template,Quizlet — Interactive Study Sets
+17,0.9996635351686881,HIGH,Anki — Spaced Repetition Flashcards,Notion — Student Study Planner Template,Quizlet — Interactive Study Sets
+18,0.005404571898771637,LOW,YouTube EDU — Free Educational Video Library,OpenStax — Free Peer-Reviewed Textbooks,Project Gutenberg — Free Books & Study Materials
+19,0.9826552814046181,HIGH,Brilliant.org — Problem-Solving & Critical Thinking,edX — University-Level Online Courses,OpenStax — Free Peer-Reviewed Textbooks
+20,2.059229034767629e-05,LOW,Duolingo — Language Learning (Cognitive Boost),Crash Course — Science & Humanities Videos,Growth Mindset — Carol Dweck (Book Summary)
+21,3.0888781215709926e-05,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Brilliant.org — Problem-Solving & Critical Thinking
+22,9.323560661300689e-07,LOW,Anki — Spaced Repetition Flashcards,Notion — Student Study Planner Template,Quizlet — Interactive Study Sets
+23,7.030952937914225e-05,LOW,General Coaching,Peer Support Group,Academic Office Hours
+24,0.478090048240961,MEDIUM,Anki — Spaced Repetition Flashcards,Notion — Student Study Planner Template,Quizlet — Interactive Study Sets
+25,0.9999997070264222,HIGH,Anki — Spaced Repetition Flashcards,Notion — Student Study Planner Template,Quizlet — Interactive Study Sets
+26,0.9975450581618569,HIGH,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Brilliant.org — Problem-Solving & Critical Thinking
+27,0.7330820296093921,HIGH,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Brilliant.org — Problem-Solving & Critical Thinking
+28,0.03696293164565512,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Sleep Foundation — Healthy Sleep Guide for Students
+29,0.6189342659303141,HIGH,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Brilliant.org — Problem-Solving & Critical Thinking
+30,1.211766454989327e-05,LOW,Brilliant.org — Problem-Solving & Critical Thinking,edX — University-Level Online Courses,Khan Academy — Mathematics Fundamentals
+31,1.4932554570190604e-05,LOW,OpenStax — Free Peer-Reviewed Textbooks,Project Gutenberg — Free Books & Study Materials,Khan Academy — Mathematics Fundamentals
+32,0.905387673634474,HIGH,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Sleep Foundation — Healthy Sleep Guide for Students
+33,6.117749336587153e-05,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Brilliant.org — Problem-Solving & Critical Thinking
+34,0.013178404519621378,LOW,YouTube EDU — Free Educational Video Library,OpenStax — Free Peer-Reviewed Textbooks,Project Gutenberg — Free Books & Study Materials
+35,0.9898677410372758,HIGH,General Coaching,Peer Support Group,Academic Office Hours
+36,0.906530756490518,HIGH,OpenStax — Free Peer-Reviewed Textbooks,Project Gutenberg — Free Books & Study Materials,Khan Academy — Mathematics Fundamentals
+37,0.07476139950385918,LOW,Duolingo — Language Learning (Cognitive Boost),Crash Course — Science & Humanities Videos,Growth Mindset — Carol Dweck (Book Summary)
+38,0.9963984505124922,HIGH,Anki — Spaced Repetition Flashcards,Notion — Student Study Planner Template,Quizlet — Interactive Study Sets
+39,4.819683079304582e-07,LOW,General Coaching,Peer Support Group,Academic Office Hours
+40,0.966422377419178,HIGH,General Coaching,Peer Support Group,Academic Office Hours
+41,2.034070342826766e-05,LOW,General Coaching,Peer Support Group,Academic Office Hours
+42,0.9642433687763359,HIGH,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Brilliant.org — Problem-Solving & Critical Thinking
+43,0.012605822900479402,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Sleep Foundation — Healthy Sleep Guide for Students
+44,0.0006341465867932827,LOW,Notion — Student Study Planner Template,Goal Setting Worksheet — SMART Goals for Students,Pomodoro Technique — Study Timer App
+45,0.016135690631573607,LOW,Calm — Sleep & Relaxation for Students,Headspace — Student Mindfulness & Stress Relief,Sleep Foundation — Healthy Sleep Guide for Students
+46,0.004370835064191558,LOW,Khan Academy — Mathematics Fundamentals,Coursera — Learning How to Learn,MIT OpenCourseWare — Science & Engineering
+47,0.11963369563439508,LOW,General Coaching,Peer Support Group,Academic Office Hours
+48,4.023206970571458e-06,LOW,YouTube EDU — Free Educational Video Library,OpenStax — Free Peer-Reviewed Textbooks,Project Gutenberg — Free Books & Study Materials
+49,6.170314883813255e-06,LOW,General Coaching,Peer Support Group,Academic Office Hours
