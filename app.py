@@ -436,7 +436,7 @@ def plot_beeswarm(explainer, X_test_scaled, feature_columns):
     for yi, fi in zip(y_positions, order):
         sv = shap_vals[:, fi]
         fv = X_test_scaled[:, fi]
-        norm_fv = (fv - fv.min()) / (fv.ptp() + 1e-8)
+        norm_fv = (fv - fv.min()) / (np.ptp(fv) + 1e-8)
         colors = plt.cm.coolwarm(norm_fv)
         jitter = np.random.uniform(-0.18, 0.18, len(sv))
         ax.scatter(sv, yi + jitter, c=colors, alpha=0.5, s=8, linewidths=0)
