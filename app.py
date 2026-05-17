@@ -295,7 +295,8 @@ def fig_beeswarm():
     for yi, fi in enumerate(order):
         sv  = shap_all[:,fi]
         fv  = X_test_scaled[:,fi]
-        nfv = (fv-fv.min())/(fv.ptp()+1e-8)
+        # بدلاً من fv.ptp() القديمة
+        nfv = (fv - fv.min()) / ((fv.max() - fv.min()) + 1e-8)
         clr = plt.cm.RdYlGn_r(nfv)
         jitter = np.random.uniform(-0.18, 0.18, len(sv))
         ax.scatter(sv, yi+jitter, c=clr, alpha=0.5, s=10, linewidths=0)
@@ -440,7 +441,7 @@ if "Teacher" in view:
         Each dot is a student. Green = helps pass. Red = increases failure risk.</div>
     """, unsafe_allow_html=True)
     with st.spinner("Building chart…"):
-        st.pyplot(fig_beeswarm(), use_container_width=True)
+        st.pyplot(fig_beeswarm(), width="stretch")
     plt.close()
 
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
