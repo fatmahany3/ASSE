@@ -422,13 +422,13 @@ if "Teacher" in view:
         return "color:#2d9e6b; font-weight:700"
 
     st.dataframe(
-        filtered.style
-            .applymap(style_risk, subset=["Risk Level"])
-            .applymap(style_prob, subset=["Chance of Failing"])
-            .set_properties(**{"font-size":"14px"}),
-        use_container_width=True, height=330,
-    )
-
+    filtered.style
+        .map(style_risk, subset=["Risk Level"])         # تعديل applymap إلى map
+        .map(style_prob, subset=["Chance of Failing"])  # تعديل applymap إلى map
+        .set_properties(**{"font-size":"14px"}),
+    width="stretch",                                    # التحديث الجديد لـ Streamlit بدلاً من use_container_width=True
+    height=330,
+)
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
     # SHAP
