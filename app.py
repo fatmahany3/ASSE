@@ -5,7 +5,7 @@ import joblib
 import json
 import shap
 import matplotlib.pyplot as plt
-import matplotlib.patches mpatches
+import matplotlib.patches as mpatches
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
