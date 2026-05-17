@@ -482,10 +482,10 @@ if "Teacher" in view:
         Each dot is a student. Green = helps pass. Red = increases failure risk.</div>
     """, unsafe_allow_html=True)
     with st.spinner("Building chart…"):
-    st.plotly_chart(
-        fig_plotly_importance(),
-        use_container_width=True
-    )
+        st.plotly_chart(
+            fig_plotly_importance(),
+            use_container_width=True
+        )
 
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
