@@ -8,6 +8,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, recall_score, f1_score
 from sklearn.metrics.pairwise import cosine_similarity
+import plotly.express as px
+import plotly.graph_objects as go
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -285,34 +287,73 @@ def fig_shap_simple(shap_vals, feature_names):
     plt.tight_layout(pad=0.5)
     return fig
 
-def fig_beeswarm():
+def fig_plotly_importance():
     shap_all = explainer.shap_values(X_test_scaled)
+
     mean_abs = np.abs(shap_all).mean(axis=0)
-    order    = np.argsort(mean_abs)[::-1][:10]
 
-    fig, ax = plt.subplots(figsize=(9,5))
-    fig.patch.set_alpha(0); ax.set_facecolor("none")
-    for yi, fi in enumerate(order):
-        sv  = shap_all[:,fi]
-        fv  = X_test_scaled[:,fi]
-        # بدلاً من fv.ptp() القديمة
-        nfv = (fv - fv.min()) / ((fv.max() - fv.min()) + 1e-8)
-        clr = plt.cm.RdYlGn_r(nfv)
-        jitter = np.random.uniform(-0.18, 0.18, len(sv))
-        ax.scatter(sv, yi+jitter, c=clr, alpha=0.5, s=10, linewidths=0)
+    importance_df = pd.DataFrame({
+        "Feature": [
+            PRETTY.get(feature_columns[i], feature_columns[i])
+            for i in range(len(feature_columns))
+        ],
+        "Importance": mean_abs
+    })
 
-    labels = [PRETTY.get(feature_columns[i], feature_columns[i]) for i in order]
-    ax.set_yticks(range(len(order)))
-    ax.set_yticklabels(labels, fontsize=9.5, color="#2d2926", fontweight="600")
-    ax.axvline(0, color="#c9c2b9", lw=1.8)
-    ax.tick_params(axis="x", colors="#c9c2b9", labelsize=8)
-    ax.spines[["top","right","left","bottom"]].set_visible(False)
-    ax.set_xlabel("← Helps students pass          Increases failure risk →",
-                  color="#8a8078", fontsize=9)
-    ax.grid(axis="x", color="#ece8e1", lw=0.8)
-    ax.set_title("Which factors matter most across your whole class?",
-                 fontsize=11, color="#2d2926", fontweight="700", pad=10)
-    plt.tight_layout(pad=0.5)
+    importance_df = (
+        importance_df
+        .sort_values("Importance", ascending=True)
+        .tail(10)
+    )
+
+    fig = px.bar(
+        importance_df,
+        x="Importance",
+        y="Feature",
+        orientation="h",
+        text="Importance",
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:.3f}",
+        textposition="outside",
+        marker=dict(
+            color=importance_df["Importance"],
+            colorscale="RdYlGn_r",
+        ),
+        hovertemplate="<b>%{y}</b><br>Impact: %{x:.4f}<extra></extra>"
+    )
+
+    fig.update_layout(
+        height=500,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(
+            family="Nunito",
+            color="#2d2926"
+        ),
+        margin=dict(l=20, r=20, t=40, b=20),
+        xaxis_title="Average SHAP Impact",
+        yaxis_title="",
+        title={
+            "text": "Most Important Factors Across Students",
+            "x": 0.02,
+            "font": {
+                "size": 18
+            }
+        }
+    )
+
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor="#ece8e1",
+        zeroline=False
+    )
+
+    fig.update_yaxes(
+        showgrid=False
+    )
+
     return fig
 
 
