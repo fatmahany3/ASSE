@@ -641,5 +641,3 @@ else:
 
         for rec in recommendations:
             st.success(rec)
-
-```
