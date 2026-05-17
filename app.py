@@ -1,6 +1,5 @@
 # app.py — EduPulse Phase 4 Dashboard
 
-```python
 import streamlit as st
 import pandas as pd
 import numpy as np
