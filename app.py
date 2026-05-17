@@ -1,321 +1,117 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
-import json
 import shap
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, recall_score, f1_score
+from sklearn.metrics.pairwise import cosine_similarity
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-# ─────────────────────────────────────────
-# Page Config
-# ─────────────────────────────────────────
+# ──────────────────────────────────────────────
+# PAGE CONFIG
+# ──────────────────────────────────────────────
 st.set_page_config(
-    page_title="ASSE — Student Early Warning System",
-    page_icon="🎓",
+    page_title="EduGuard — Student Success Tracker",
+    page_icon="🌱",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-# ─────────────────────────────────────────
-# Custom CSS — Premium Redesign
-# ─────────────────────────────────────────
+# ──────────────────────────────────────────────
+# GLOBAL CSS  — warm, light, friendly
+# ──────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Lora:ital,wght@0,500;0,600;1,500&display=swap');
 
 :root {
-    --bg:        #0f0f13;
-    --bg2:       #16161d;
-    --bg3:       #1c1c26;
-    --border:    #2a2a3a;
-    --border2:   #35354a;
-    --text:      #f0eee8;
-    --text2:     #9896a4;
-    --text3:     #5a5868;
-    --accent:    #c8a96e;
-    --accent2:   #e8c98e;
-    --red:       #e05c5c;
-    --amber:     #e0a43c;
-    --green:     #4caf7d;
-    --blue:      #5b8ff9;
-    --purple:    #9b7ee8;
+    --cream:   #faf8f5;
+    --white:   #ffffff;
+    --border:  #ece8e1;
+    --text:    #2d2926;
+    --muted:   #8a8078;
+    --green:   #2d9e6b;
+    --green-l: #e8f7f1;
+    --amber:   #d97706;
+    --amber-l: #fef3c7;
+    --red:     #dc2626;
+    --red-l:   #fee2e2;
+    --blue:    #2563eb;
+    --blue-l:  #eff6ff;
+    --purple:  #7c3aed;
+    --purple-l:#f5f3ff;
+    --teal:    #0d9488;
+    --teal-l:  #f0fdfa;
+    --shadow:  0 2px 12px rgba(0,0,0,0.07);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
 }
 
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg) !important;
-    color: var(--text) !important;
+html, body, [data-testid="stAppViewContainer"] {
+    background: var(--cream) !important;
+    font-family: 'Nunito', sans-serif;
 }
+[data-testid="stHeader"] { background: transparent !important; }
 
-.main { background: var(--bg) !important; }
-.block-container { padding-top: 1.5rem !important; }
+[data-testid="stSidebar"] {
+    background: var(--white) !important;
+    border-right: 1px solid var(--border) !important;
+}
+[data-testid="stSidebar"] * { color: var(--text) !important; }
 
-/* ── Sidebar */
-section[data-testid="stSidebar"] {
-    background: var(--bg2) !important;
-    border-right: 1px solid var(--border);
-}
-section[data-testid="stSidebar"] * { color: var(--text2) !important; }
-section[data-testid="stSidebar"] .stRadio label { font-size: 0.9rem !important; }
+.block-container { padding-top: 2rem !important; }
 
-/* ── App Header */
-.app-header {
-    padding: 1.8rem 0 1.2rem 0;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 2rem;
-}
-.app-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2rem;
-    font-weight: 400;
-    color: var(--text);
-    letter-spacing: -0.01em;
-    line-height: 1.1;
-}
-.app-title span { color: var(--accent); font-style: italic; }
-.app-subtitle {
-    color: var(--text3);
-    font-size: 0.85rem;
-    margin-top: 0.35rem;
-    font-weight: 400;
-}
-
-/* ── Section header */
-.section-header {
-    font-family: 'DM Sans', sans-serif;
-    color: var(--text3);
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.5rem;
-    margin-bottom: 1.2rem;
-    margin-top: 0.5rem;
-}
-
-/* ── Metric Cards */
-.metric-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
+.kpi {
     border-radius: 18px;
-    padding: 1.3rem 1.6rem;
-    margin-bottom: 0.8rem;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s;
+    padding: 1.3rem 1.5rem;
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow);
+    text-align: center;
 }
-.metric-card::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 2px;
-    border-radius: 0 0 18px 18px;
-}
-.metric-card.blue::after  { background: linear-gradient(90deg, var(--blue), transparent); }
-.metric-card.green::after { background: linear-gradient(90deg, var(--green), transparent); }
-.metric-card.red::after   { background: linear-gradient(90deg, var(--red), transparent); }
-.metric-card.purple::after{ background: linear-gradient(90deg, var(--purple), transparent); }
-.metric-card.amber::after { background: linear-gradient(90deg, var(--amber), transparent); }
-.metric-card.gold::after  { background: linear-gradient(90deg, var(--accent), transparent); }
+.kpi-icon  { font-size: 2rem; line-height: 1; margin-bottom: 0.4rem; }
+.kpi-value { font-family: 'Lora', serif; font-size: 2rem; font-weight: 600; line-height: 1.1; }
+.kpi-label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+             letter-spacing: 0.07em; margin-top: 0.25rem; white-space: pre-line; }
 
-.metric-label {
-    color: var(--text3);
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 0.4rem;
-}
-.metric-value {
-    color: var(--text);
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.1;
-    font-family: 'DM Mono', monospace;
-}
-.metric-sub {
-    color: var(--text3);
-    font-size: 0.76rem;
-    margin-top: 0.25rem;
+.stSlider label, .stSelectbox label, .stNumberInput label {
+    font-weight: 700 !important;
+    color: var(--text) !important;
+    font-size: 0.88rem !important;
 }
 
-/* ── Risk Badges */
-.risk-high {
-    background: rgba(224,92,92,0.12);
-    color: var(--red);
-    border: 1px solid rgba(224,92,92,0.25);
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-weight: 700;
-    font-size: 0.82rem;
-    display: inline-block;
-}
-.risk-medium {
-    background: rgba(224,164,60,0.12);
-    color: var(--amber);
-    border: 1px solid rgba(224,164,60,0.25);
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-weight: 700;
-    font-size: 0.82rem;
-    display: inline-block;
-}
-.risk-low {
-    background: rgba(76,175,125,0.12);
-    color: var(--green);
-    border: 1px solid rgba(76,175,125,0.25);
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-weight: 700;
-    font-size: 0.82rem;
-    display: inline-block;
-}
-
-/* ── Teacher — Plain Language Cards */
-.student-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.1rem 1.4rem;
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 1.2rem;
-    transition: border-color 0.2s;
-}
-.student-card:hover { border-color: var(--border2); }
-.student-card-id {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--text3);
-    min-width: 44px;
-}
-.student-card-name {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--text);
-    flex: 1;
-}
-.student-card-meta {
-    font-size: 0.78rem;
-    color: var(--text2);
-    margin-top: 0.12rem;
-}
-.mini-bar-wrap {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-.mini-bar-label {
-    font-size: 0.68rem;
-    color: var(--text3);
-    display: flex;
-    justify-content: space-between;
-}
-.mini-bar-bg {
-    height: 5px;
-    background: var(--bg3);
-    border-radius: 10px;
-    overflow: hidden;
-}
-.mini-bar-fill {
-    height: 5px;
-    border-radius: 10px;
-}
-
-/* ── Insight cards for teacher */
-.insight-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.4rem;
-    height: 100%;
-}
-.insight-icon { font-size: 1.8rem; margin-bottom: 0.6rem; }
-.insight-title {
-    font-weight: 700;
-    font-size: 0.92rem;
-    color: var(--text);
-    margin-bottom: 0.4rem;
-}
-.insight-body {
-    font-size: 0.82rem;
-    color: var(--text2);
-    line-height: 1.55;
-}
-.insight-action {
-    margin-top: 0.8rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    padding: 0.4rem 0.9rem;
-    border-radius: 20px;
-    display: inline-block;
-}
-
-/* ── Recommendation cards */
-.rec-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1.2rem;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-/* ── Form styling */
-.stSlider label        { color: var(--text2) !important; font-size: 0.85rem !important; }
-.stSelectbox label     { color: var(--text2) !important; font-size: 0.85rem !important; }
-.stNumberInput label   { color: var(--text2) !important; font-size: 0.85rem !important; }
-.stSlider div[data-baseweb="slider"] div { background: var(--accent) !important; }
-
-/* ── Buttons */
 .stButton > button {
-    background: linear-gradient(135deg, var(--accent) 0%, #a07840 100%);
-    color: #0f0f13;
-    border: none;
-    border-radius: 12px;
-    padding: 0.65rem 2rem;
-    font-weight: 700;
-    font-size: 0.9rem;
-    font-family: 'DM Sans', sans-serif;
-    width: 100%;
-    transition: all 0.2s;
-    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, #2d9e6b, #0d9488) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 14px !important;
+    font-family: 'Nunito', sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 1rem !important;
+    padding: 0.65rem 2.5rem !important;
+    width: 100% !important;
+    box-shadow: 0 4px 14px rgba(45,158,107,0.35) !important;
+    transition: all 0.2s !important;
 }
 .stButton > button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 28px rgba(200,169,110,0.3);
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 24px rgba(45,158,107,0.45) !important;
 }
 
-/* ── Dataframe */
-.dataframe { background: var(--bg2) !important; }
-
-/* ── Selectbox / inputs dark */
-div[data-baseweb="select"] > div,
-div[data-baseweb="input"] > div {
-    background: var(--bg3) !important;
-    border-color: var(--border) !important;
-    color: var(--text) !important;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────
-# Load Artifacts + Train Model
-# ─────────────────────────────────────────
+
+# ──────────────────────────────────────────────
+# DATA + MODEL
+# ──────────────────────────────────────────────
 @st.cache_resource
-def load_model_and_data():
+def load_everything():
     train_df = pd.read_csv("train_processed.csv")
     test_df  = pd.read_csv("test_processed.csv")
 
@@ -333,645 +129,667 @@ def load_model_and_data():
     model = LogisticRegression(max_iter=1000, random_state=42)
     model.fit(X_train_scaled, y_train)
 
-    explainer = shap.LinearExplainer(model, X_train_scaled, feature_perturbation="interventional")
+    explainer = shap.LinearExplainer(model, X_train_scaled,
+                                     feature_perturbation="interventional")
 
-    preds   = model.predict(X_test_scaled)
-    probas  = model.predict_proba(X_test_scaled)[:, 1]
+    preds = model.predict(X_test_scaled)
+    acc   = round(accuracy_score(y_test, preds) * 100, 1)
+    rec   = round(recall_score(y_test, preds)   * 100, 1)
+    f1    = round(f1_score(y_test, preds)        * 100, 1)
 
-    metrics = {
-        "accuracy": round(accuracy_score(y_test, preds) * 100, 1),
-        "recall":   round(recall_score(y_test, preds) * 100, 1),
-        "f1":       round(f1_score(y_test, preds) * 100, 1),
-    }
-
-    # Build teacher table
-    shap_vals_all = explainer.shap_values(X_test_scaled)
-    teacher_rows  = []
+    rows = []
     for i in range(len(X_test)):
-        raw   = X_test.iloc[i].to_dict()
-        proba = float(model.predict_proba(X_test_scaled[i:i+1])[0][0])
-        rl    = "HIGH" if proba >= 0.7 else ("MEDIUM" if proba >= 0.4 else "LOW")
-        teacher_rows.append({
-            "Student ID":    f"S{i+1:03d}",
-            "Attendance (%)":     raw["Attendance"],
-            "Hours Studied":      raw["Hours_Studied"],
-            "Previous Score":     raw["Previous_Scores"],
-            "Fail Prob (%)":      round(proba * 100, 1),
-            "Risk Level":         rl,
+        raw = X_test.iloc[i].to_dict()
+        pf  = float(model.predict_proba(X_test_scaled[i:i+1])[0][0])
+        rl  = "🔴 High" if pf >= 0.7 else ("🟡 Medium" if pf >= 0.4 else "🟢 Low")
+        rows.append({
+            "Student": f"Student {i+1:03d}",
+            "Attendance": f"{raw['Attendance']:.0f}%",
+            "Hours Studied / Week": f"{raw['Hours_Studied']:.0f}h",
+            "Previous Score": f"{raw['Previous_Scores']:.0f}/100",
+            "Chance of Failing": f"{pf*100:.1f}%",
+            "Risk Level": rl,
         })
-    teacher_df = pd.DataFrame(teacher_rows)
+    teacher_df = pd.DataFrame(rows)
 
     return (model, scaler, explainer, feature_columns,
             X_train_scaled, X_test_scaled, X_test, y_test,
-            metrics, teacher_df)
+            acc, rec, f1, teacher_df)
 
-# ─────────────────────────────────────────
-# Resources Catalog
-# ─────────────────────────────────────────
+
+(model, scaler, explainer, feature_columns,
+ X_train_scaled, X_test_scaled, X_test, y_test,
+ ACC, REC, F1, teacher_df) = load_everything()
+
+
+# ──────────────────────────────────────────────
+# RESOURCES
+# ──────────────────────────────────────────────
 RESOURCES = [
-    {"id":"R01","title":"Khan Academy — Mathematics Fundamentals","topic":"Math","icon":"📐",
-     "url":"https://www.khanacademy.org/math","motivation":1,"hours_studied":1,"sleep":0,"resources_access":1},
-    {"id":"R02","title":"Coursera — Learning How to Learn","topic":"Study Skills","icon":"🧠",
-     "url":"https://www.coursera.org/learn/learning-how-to-learn","motivation":1,"hours_studied":1,"sleep":0,"resources_access":1},
-    {"id":"R03","title":"Pomodoro Technique — Study Timer App","topic":"Productivity","icon":"⏱️",
-     "url":"https://pomofocus.io","motivation":1,"hours_studied":1,"sleep":0,"resources_access":0},
-    {"id":"R04","title":"Anki — Spaced Repetition Flashcards","topic":"Memory","icon":"🃏",
-     "url":"https://apps.ankiweb.net","motivation":0,"hours_studied":1,"sleep":0,"resources_access":0},
-    {"id":"R05","title":"MIT OpenCourseWare — Science & Engineering","topic":"Science","icon":"🔬",
-     "url":"https://ocw.mit.edu","motivation":1,"hours_studied":1,"sleep":0,"resources_access":1},
-    {"id":"R06","title":"Crash Course — Science & Humanities Videos","topic":"General","icon":"🎬",
-     "url":"https://www.youtube.com/crashcourse","motivation":1,"hours_studied":0,"sleep":0,"resources_access":0},
-    {"id":"R07","title":"Quizlet — Interactive Study Sets","topic":"Study Skills","icon":"✏️",
-     "url":"https://quizlet.com","motivation":1,"hours_studied":1,"sleep":0,"resources_access":0},
-    {"id":"R08","title":"Sleep Foundation — Healthy Sleep Guide","topic":"Wellness","icon":"😴",
-     "url":"https://www.sleepfoundation.org/teens-and-sleep","motivation":0,"hours_studied":0,"sleep":1,"resources_access":0},
-    {"id":"R09","title":"Headspace — Student Mindfulness & Stress Relief","topic":"Wellness","icon":"🧘",
-     "url":"https://www.headspace.com/students","motivation":0,"hours_studied":0,"sleep":1,"resources_access":0},
-    {"id":"R10","title":"Calm — Sleep & Relaxation for Students","topic":"Wellness","icon":"🌙",
-     "url":"https://www.calm.com","motivation":0,"hours_studied":0,"sleep":1,"resources_access":0},
-    {"id":"R11","title":"TED-Ed — Motivational Student Talks","topic":"Motivation","icon":"🎤",
-     "url":"https://ed.ted.com","motivation":1,"hours_studied":0,"sleep":0,"resources_access":0},
-    {"id":"R12","title":"Growth Mindset — Carol Dweck","topic":"Motivation","icon":"💡",
-     "url":"https://www.mindsetonline.com","motivation":1,"hours_studied":0,"sleep":0,"resources_access":0},
-    {"id":"R13","title":"SMART Goals Worksheet for Students","topic":"Motivation","icon":"🎯",
-     "url":"https://www.smartgoalsguide.com","motivation":1,"hours_studied":1,"sleep":0,"resources_access":0},
-    {"id":"R14","title":"Project Gutenberg — Free Study Materials","topic":"General","icon":"📚",
-     "url":"https://www.gutenberg.org","motivation":0,"hours_studied":1,"sleep":0,"resources_access":1},
-    {"id":"R15","title":"YouTube EDU — Free Educational Library","topic":"General","icon":"▶️",
-     "url":"https://www.youtube.com/education","motivation":0,"hours_studied":0,"sleep":0,"resources_access":1},
-    {"id":"R16","title":"OpenStax — Free Peer-Reviewed Textbooks","topic":"Science","icon":"📖",
-     "url":"https://openstax.org","motivation":0,"hours_studied":1,"sleep":0,"resources_access":1},
-    {"id":"R17","title":"edX — University-Level Online Courses","topic":"General","icon":"🏛️",
-     "url":"https://www.edx.org","motivation":1,"hours_studied":1,"sleep":1,"resources_access":1},
-    {"id":"R18","title":"Brilliant.org — Problem-Solving & Critical Thinking","topic":"Math","icon":"⚡",
-     "url":"https://brilliant.org","motivation":1,"hours_studied":1,"sleep":1,"resources_access":1},
-    {"id":"R19","title":"Duolingo — Language Learning (Cognitive Boost)","topic":"Cognitive","icon":"🦜",
-     "url":"https://www.duolingo.com","motivation":1,"hours_studied":0,"sleep":0,"resources_access":0},
-    {"id":"R20","title":"Notion — Student Study Planner Template","topic":"Productivity","icon":"📋",
-     "url":"https://www.notion.so/templates/student-planner","motivation":1,"hours_studied":1,"sleep":0,"resources_access":0},
+    {"title":"Khan Academy — Maths & Science",        "topic":"Study",       "icon":"📐","bg":"#eff6ff","ic":"#2563eb","url":"https://www.khanacademy.org","motivation":1,"hours_studied":1,"sleep":0,"resources_access":1},
+    {"title":"Coursera — Learning How to Learn",      "topic":"Study Skills","icon":"🧠","bg":"#f5f3ff","ic":"#7c3aed","url":"https://www.coursera.org/learn/learning-how-to-learn","motivation":1,"hours_studied":1,"sleep":0,"resources_access":1},
+    {"title":"Pomodoro Timer — Focus Technique",      "topic":"Productivity","icon":"⏱️","bg":"#fef3c7","ic":"#d97706","url":"https://pomofocus.io","motivation":1,"hours_studied":1,"sleep":0,"resources_access":0},
+    {"title":"Anki — Smart Flashcard Memory App",     "topic":"Memory",      "icon":"🃏","bg":"#e8f7f1","ic":"#2d9e6b","url":"https://apps.ankiweb.net","motivation":0,"hours_studied":1,"sleep":0,"resources_access":0},
+    {"title":"MIT OpenCourseWare — Free Lectures",    "topic":"Science",     "icon":"🔬","bg":"#eff6ff","ic":"#2563eb","url":"https://ocw.mit.edu","motivation":1,"hours_studied":1,"sleep":0,"resources_access":1},
+    {"title":"Crash Course — Fun Educational Videos", "topic":"General",     "icon":"🎬","bg":"#fef3c7","ic":"#d97706","url":"https://www.youtube.com/crashcourse","motivation":1,"hours_studied":0,"sleep":0,"resources_access":0},
+    {"title":"Quizlet — Practice with Flashcards",    "topic":"Study Skills","icon":"✏️","bg":"#f5f3ff","ic":"#7c3aed","url":"https://quizlet.com","motivation":1,"hours_studied":1,"sleep":0,"resources_access":0},
+    {"title":"Sleep Foundation — Better Sleep Guide", "topic":"Wellness",    "icon":"😴","bg":"#f0fdfa","ic":"#0d9488","url":"https://www.sleepfoundation.org","motivation":0,"hours_studied":0,"sleep":1,"resources_access":0},
+    {"title":"Headspace — Calm Your Mind",            "topic":"Wellness",    "icon":"🧘","bg":"#e8f7f1","ic":"#2d9e6b","url":"https://www.headspace.com/students","motivation":0,"hours_studied":0,"sleep":1,"resources_access":0},
+    {"title":"Calm — Relax & Sleep Better",           "topic":"Wellness",    "icon":"🌙","bg":"#f0fdfa","ic":"#0d9488","url":"https://www.calm.com","motivation":0,"hours_studied":0,"sleep":1,"resources_access":0},
+    {"title":"TED-Ed — Inspiring Student Talks",      "topic":"Motivation",  "icon":"🎤","bg":"#fee2e2","ic":"#dc2626","url":"https://ed.ted.com","motivation":1,"hours_studied":0,"sleep":0,"resources_access":0},
+    {"title":"Growth Mindset — Carol Dweck",          "topic":"Motivation",  "icon":"💡","bg":"#fef3c7","ic":"#d97706","url":"https://www.mindsetonline.com","motivation":1,"hours_studied":0,"sleep":0,"resources_access":0},
+    {"title":"SMART Goals Worksheet",                 "topic":"Motivation",  "icon":"🎯","bg":"#fee2e2","ic":"#dc2626","url":"https://www.smartgoalsguide.com","motivation":1,"hours_studied":1,"sleep":0,"resources_access":0},
+    {"title":"Project Gutenberg — Free Books",        "topic":"Reading",     "icon":"📚","bg":"#f5f3ff","ic":"#7c3aed","url":"https://www.gutenberg.org","motivation":0,"hours_studied":1,"sleep":0,"resources_access":1},
+    {"title":"YouTube EDU — Free Video Lessons",      "topic":"General",     "icon":"▶️","bg":"#fee2e2","ic":"#dc2626","url":"https://www.youtube.com/education","motivation":0,"hours_studied":0,"sleep":0,"resources_access":1},
+    {"title":"OpenStax — Free Textbooks",             "topic":"Science",     "icon":"📖","bg":"#eff6ff","ic":"#2563eb","url":"https://openstax.org","motivation":0,"hours_studied":1,"sleep":0,"resources_access":1},
+    {"title":"edX — University Courses Online",       "topic":"General",     "icon":"🏛️","bg":"#f0fdfa","ic":"#0d9488","url":"https://www.edx.org","motivation":1,"hours_studied":1,"sleep":1,"resources_access":1},
+    {"title":"Brilliant.org — Problem-Solving",       "topic":"Maths",       "icon":"⚡","bg":"#fef3c7","ic":"#d97706","url":"https://brilliant.org","motivation":1,"hours_studied":1,"sleep":1,"resources_access":1},
+    {"title":"Duolingo — Language & Brain Training",  "topic":"Cognitive",   "icon":"🦜","bg":"#e8f7f1","ic":"#2d9e6b","url":"https://www.duolingo.com","motivation":1,"hours_studied":0,"sleep":0,"resources_access":0},
+    {"title":"Notion — Student Planner Template",     "topic":"Productivity","icon":"📋","bg":"#f5f3ff","ic":"#7c3aed","url":"https://www.notion.so/templates/student-planner","motivation":1,"hours_studied":1,"sleep":0,"resources_access":0},
 ]
+RES_VECTORS = np.array(
+    [[r["motivation"], r["hours_studied"], r["sleep"], r["resources_access"]]
+     for r in RESOURCES], dtype=float)
 
-RESOURCE_VECTORS = np.array(
-    [[r["motivation"], r["hours_studied"], r["sleep"], r["resources_access"]] for r in RESOURCES],
-    dtype=float,
-)
+PRETTY = {
+    "Motivation_Level":              "Motivation",
+    "Peer_Influence":                "Peer Influence",
+    "Access_to_Resources":           "Access to Resources",
+    "Parental_Involvement":          "Parental Involvement",
+    "Gender_Male":                   "Gender",
+    "Extracurricular_Activities_Yes":"Extracurricular Activities",
+    "Learning_Disabilities_Yes":     "Learning Disability",
+    "Hours_Studied":                 "Hours Studied",
+    "Attendance":                    "Attendance",
+    "Sleep_Hours":                   "Sleep Hours",
+    "Previous_Scores":               "Previous Score",
+    "Tutoring_Sessions":             "Tutoring Sessions",
+    "Physical_Activity":             "Physical Activity",
+    "Stress_Proxy":                  "Stress Level",
+}
 
-# ─────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────
-def build_student_vector(raw, shap_vals, feature_names):
-    shap_s = pd.Series(shap_vals, index=feature_names)
-    needs_motivation = 1 if (raw.get("Motivation_Level", 2) == 0 or shap_s.get("Motivation_Level", 0) < -0.1) else 0
-    needs_study      = 1 if (raw.get("Hours_Studied", 20) < 15   or shap_s.get("Hours_Studied", 0) < -0.5)   else 0
-    needs_sleep      = 1 if (raw.get("Sleep_Hours", 7) < 6        or shap_s.get("Sleep_Hours", 0) < -0.2)     else 0
-    needs_resources  = 1 if (raw.get("Access_to_Resources", 2) == 0 or shap_s.get("Access_to_Resources", 0) < -0.3) else 0
-    return np.array([needs_motivation, needs_study, needs_sleep, needs_resources], dtype=float)
 
-def get_top_recommendations(raw, shap_vals, feature_names, n=3):
-    vec = build_student_vector(raw, shap_vals, feature_names).reshape(1, -1)
-    sims = cosine_similarity(vec, RESOURCE_VECTORS)[0]
-    top_idx = np.argsort(sims)[::-1][:n]
-    return [RESOURCES[i] for i in top_idx]
+# ──────────────────────────────────────────────
+# HELPERS
+# ──────────────────────────────────────────────
+def student_vec(raw, shap_vals, feat):
+    s  = pd.Series(shap_vals, index=feat)
+    m  = 1 if (raw.get("Motivation_Level",2)==0    or s.get("Motivation_Level",0)<-0.1) else 0
+    h  = 1 if (raw.get("Hours_Studied",20)<15       or s.get("Hours_Studied",0)<-0.5)   else 0
+    sl = 1 if (raw.get("Sleep_Hours",7)<6            or s.get("Sleep_Hours",0)<-0.2)     else 0
+    r  = 1 if (raw.get("Access_to_Resources",2)==0   or s.get("Access_to_Resources",0)<-0.3) else 0
+    return np.array([m,h,sl,r], dtype=float)
 
-def predict_student(model, scaler, explainer, feature_columns, student_raw):
-    row = pd.DataFrame([student_raw])[feature_columns]
-    row_scaled = scaler.transform(row)
-    prob_fail = float(model.predict_proba(row_scaled)[0][0])
-    prob_pass = 1 - prob_fail
-    shap_vals = explainer.shap_values(row_scaled)[0]
-    risk = "HIGH" if prob_fail >= 0.7 else ("MEDIUM" if prob_fail >= 0.4 else "LOW")
-    recs = get_top_recommendations(student_raw, shap_vals, feature_columns)
-    return prob_fail, prob_pass, shap_vals, risk, recs, row_scaled
+def get_recs(raw, shap_vals, feat, n=3):
+    v    = student_vec(raw, shap_vals, feat).reshape(1,-1)
+    sims = cosine_similarity(v, RES_VECTORS)[0]
+    idx  = np.argsort(sims)[::-1][:n]
+    return [RESOURCES[i] for i in idx]
 
-def plot_shap_waterfall(shap_vals, feature_names, base_value, student_data):
-    fig, ax = plt.subplots(figsize=(8, 5))
-    fig.patch.set_facecolor("#0f0f13")
-    ax.set_facecolor("#0f0f13")
+def run_prediction(raw):
+    row       = pd.DataFrame([raw])[feature_columns]
+    scaled    = scaler.transform(row)
+    prob_fail = float(model.predict_proba(scaled)[0][0])
+    shap_vals = explainer.shap_values(scaled)[0]
+    risk      = "HIGH" if prob_fail>=0.7 else ("MEDIUM" if prob_fail>=0.4 else "LOW")
+    recs      = get_recs(raw, shap_vals, feature_columns)
+    return prob_fail, shap_vals, risk, recs
 
-    sorted_idx = np.argsort(np.abs(shap_vals))[::-1][:8]
-    vals  = shap_vals[sorted_idx]
-    names = [feature_names[i] for i in sorted_idx]
-    raw_vals = [list(student_data.values())[i] if i < len(student_data) else "" for i in sorted_idx]
 
-    colors = ["#e05c5c" if v > 0 else "#5b8ff9" for v in vals]
-    bars = ax.barh(range(len(vals)), vals, color=colors, alpha=0.85, height=0.6, edgecolor="none")
-
-    pretty = {
-        "Motivation_Level": "Motivation",
-        "Peer_Influence": "Peer Influence",
-        "Access_to_Resources": "Resources Access",
-        "Parental_Involvement": "Parental Involvement",
-        "Gender_Male": "Gender (Male)",
-        "Extracurricular_Activities_Yes": "Extracurricular",
-        "Learning_Disabilities_Yes": "Learning Disability",
-        "Hours_Studied": "Hours Studied",
-        "Attendance": "Attendance %",
-        "Sleep_Hours": "Sleep Hours",
-        "Previous_Scores": "Previous Score",
-        "Tutoring_Sessions": "Tutoring Sessions",
-        "Physical_Activity": "Physical Activity",
-        "Stress_Proxy": "Stress Level",
-    }
-    ylabels = [pretty.get(n, n) for n in names]
-
-    ax.set_yticks(range(len(vals)))
-    ax.set_yticklabels(ylabels, color="#9896a4", fontsize=9)
-    ax.axvline(0, color="#2a2a3a", linewidth=1.2)
-    ax.tick_params(axis="x", colors="#4a5568", labelsize=8)
-    ax.spines[["top","right","left","bottom"]].set_visible(False)
-    ax.set_xlabel("SHAP Value (impact on failure risk)", color="#5a5868", fontsize=8)
-    ax.set_title("What's Helping & Hurting Your Result", color="#9896a4", fontsize=10, fontweight="bold", pad=10)
-
-    for i, (bar, val) in enumerate(zip(bars, vals)):
-        label = f"+{val:.3f}" if val > 0 else f"{val:.3f}"
-        ax.text(val + (0.005 if val >= 0 else -0.005), i,
-                label, va="center", ha="left" if val >= 0 else "right",
-                color="#e05c5c" if val > 0 else "#5b8ff9", fontsize=8, fontfamily="monospace")
-
-    red_patch  = mpatches.Patch(color="#e05c5c", alpha=0.85, label="↑ Increases failure risk")
-    blue_patch = mpatches.Patch(color="#5b8ff9", alpha=0.85, label="↓ Decreases failure risk")
-    ax.legend(handles=[red_patch, blue_patch], loc="lower right",
-              facecolor="#16161d", edgecolor="#2a2a3a", labelcolor="#9896a4", fontsize=8)
-
-    plt.tight_layout()
+# ──────────────────────────────────────────────
+# CHARTS
+# ──────────────────────────────────────────────
+def fig_donut(prob_fail, risk):
+    cmap = {"HIGH":"#dc2626","MEDIUM":"#d97706","LOW":"#2d9e6b"}
+    color = cmap[risk]
+    fig, ax = plt.subplots(figsize=(3.6, 3.6))
+    fig.patch.set_alpha(0); ax.set_facecolor("none")
+    ax.pie([prob_fail, 1-prob_fail], colors=[color,"#f0ede8"],
+           startangle=90, counterclock=False,
+           wedgeprops=dict(width=0.32, edgecolor="white", linewidth=3))
+    ax.text(0,  0.1, f"{prob_fail*100:.0f}%",  ha="center", va="center",
+            fontsize=28, fontweight="800", color=color)
+    ax.text(0, -0.22, "failure risk",           ha="center", va="center",
+            fontsize=10, color="#8a8078")
+    plt.tight_layout(pad=0)
     return fig
 
-def plot_beeswarm(explainer, X_test_scaled, feature_columns):
-    shap_vals = explainer.shap_values(X_test_scaled)
-    pretty = {
-        "Motivation_Level": "Motivation",
-        "Peer_Influence": "Peer Influence",
-        "Access_to_Resources": "Resources Access",
-        "Parental_Involvement": "Parental Involvement",
-        "Gender_Male": "Gender (Male)",
-        "Extracurricular_Activities_Yes": "Extracurricular",
-        "Learning_Disabilities_Yes": "Learning Disability",
-        "Hours_Studied": "Hours Studied",
-        "Attendance": "Attendance %",
-        "Sleep_Hours": "Sleep Hours",
-        "Previous_Scores": "Previous Score",
-        "Tutoring_Sessions": "Tutoring Sessions",
-        "Physical_Activity": "Physical Activity",
-        "Stress_Proxy": "Stress Level",
-    }
-    pretty_names = [pretty.get(c, c) for c in feature_columns]
+def fig_shap_simple(shap_vals, feature_names):
+    order = np.argsort(np.abs(shap_vals))[::-1][:8]
+    vals  = shap_vals[order]
+    names = [PRETTY.get(feature_names[i], feature_names[i]) for i in order]
 
-    mean_abs = np.abs(shap_vals).mean(axis=0)
-    order = np.argsort(mean_abs)[::-1][:10]
+    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    fig.patch.set_alpha(0); ax.set_facecolor("none")
 
-    fig, ax = plt.subplots(figsize=(9, 5))
-    fig.patch.set_facecolor("#0f0f13")
-    ax.set_facecolor("#0f0f13")
+    colors = ["#dc2626" if v>0 else "#2d9e6b" for v in vals]
+    alphas = [min(1.0, 0.55 + abs(v)*2) for v in vals]
+    for i,(v,c,a) in enumerate(zip(vals, colors, alphas)):
+        ax.barh(i, v, color=c, alpha=a, height=0.55, linewidth=0, zorder=3)
 
-    y_positions = list(range(len(order)))
-    for yi, fi in zip(y_positions, order):
-        sv = shap_vals[:, fi]
-        fv = X_test_scaled[:, fi]
-        norm_fv = (fv - fv.min()) / (fv.ptp() + 1e-8)
-        colors = plt.cm.coolwarm(norm_fv)
+    ax.set_yticks(range(len(names)))
+    ax.set_yticklabels(names, fontsize=10, color="#2d2926", fontweight="600")
+    ax.axvline(0, color="#c9c2b9", lw=1.5, zorder=2)
+    ax.tick_params(axis="x", colors="#c9c2b9", labelsize=8)
+    ax.spines[["top","right","left","bottom"]].set_visible(False)
+    ax.set_xlabel("← Helps you pass              Hurts your chances →",
+                  color="#8a8078", fontsize=8.5, labelpad=6)
+    ax.grid(axis="x", color="#ece8e1", lw=0.8, zorder=1)
+    lim = max(abs(vals).max()+0.12, 0.2)
+    ax.set_xlim(-lim, lim)
+
+    rp = mpatches.Patch(color="#dc2626", alpha=0.8, label="🔴 Working against you")
+    gp = mpatches.Patch(color="#2d9e6b", alpha=0.8, label="🟢 Working for you")
+    ax.legend(handles=[gp,rp], loc="lower right", fontsize=8,
+              framealpha=0, labelcolor="#2d2926")
+    plt.tight_layout(pad=0.5)
+    return fig
+
+def fig_beeswarm():
+    shap_all = explainer.shap_values(X_test_scaled)
+    mean_abs = np.abs(shap_all).mean(axis=0)
+    order    = np.argsort(mean_abs)[::-1][:10]
+
+    fig, ax = plt.subplots(figsize=(9,5))
+    fig.patch.set_alpha(0); ax.set_facecolor("none")
+    for yi, fi in enumerate(order):
+        sv  = shap_all[:,fi]
+        fv  = X_test_scaled[:,fi]
+        nfv = (fv-fv.min())/(fv.ptp()+1e-8)
+        clr = plt.cm.RdYlGn_r(nfv)
         jitter = np.random.uniform(-0.18, 0.18, len(sv))
-        ax.scatter(sv, yi + jitter, c=colors, alpha=0.5, s=8, linewidths=0)
+        ax.scatter(sv, yi+jitter, c=clr, alpha=0.5, s=10, linewidths=0)
 
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels([pretty_names[i] for i in order], color="#9896a4", fontsize=9)
-    ax.axvline(0, color="#2a2a3a", lw=1.5)
-    ax.tick_params(axis="x", colors="#4a5568", labelsize=8)
+    labels = [PRETTY.get(feature_columns[i], feature_columns[i]) for i in order]
+    ax.set_yticks(range(len(order)))
+    ax.set_yticklabels(labels, fontsize=9.5, color="#2d2926", fontweight="600")
+    ax.axvline(0, color="#c9c2b9", lw=1.8)
+    ax.tick_params(axis="x", colors="#c9c2b9", labelsize=8)
     ax.spines[["top","right","left","bottom"]].set_visible(False)
-    ax.set_xlabel("SHAP Value", color="#5a5868", fontsize=8)
-    ax.set_title("Global Feature Importance (SHAP Beeswarm)", color="#9896a4", fontsize=10, fontweight="bold", pad=10)
-    plt.tight_layout()
+    ax.set_xlabel("← Helps students pass          Increases failure risk →",
+                  color="#8a8078", fontsize=9)
+    ax.grid(axis="x", color="#ece8e1", lw=0.8)
+    ax.set_title("Which factors matter most across your whole class?",
+                 fontsize=11, color="#2d2926", fontweight="700", pad=10)
+    plt.tight_layout(pad=0.5)
     return fig
 
-# ─────────────────────────────────────────
-# Load Everything
-# ─────────────────────────────────────────
-with st.spinner("Loading model & data…"):
-    (model, scaler, explainer, feature_columns,
-     X_train_scaled, X_test_scaled, X_test, y_test,
-     metrics, teacher_df) = load_model_and_data()
 
-# ─────────────────────────────────────────
-# Sidebar
-# ─────────────────────────────────────────
+# ──────────────────────────────────────────────
+# SIDEBAR
+# ──────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-    <div style="padding: 1.2rem 0 1.6rem 0; border-bottom: 1px solid #2a2a3a; margin-bottom: 1.4rem;">
-        <div style="font-family:'DM Serif Display',serif; font-size:1.5rem; font-weight:400; color:#f0eee8; letter-spacing:-0.01em;">
-            <span style="color:#c8a96e; font-style:italic;">ASSE</span>
-        </div>
-        <div style="color:#5a5868; font-size:0.75rem; margin-top:0.25rem; letter-spacing:0.05em; text-transform:uppercase;">Student Success Engine</div>
+    <div style='padding:1.2rem 0 1.5rem 0; border-bottom:1px solid #ece8e1; margin-bottom:1.2rem;'>
+        <div style='font-size:1.5rem; font-weight:900; color:#2d2926;'>🌱 EduGuard</div>
+        <div style='font-size:0.8rem; color:#8a8078; margin-top:2px; font-weight:600;'>
+            Student Success Tracker</div>
     </div>
     """, unsafe_allow_html=True)
 
-    view = st.radio("Navigate", ["👨‍🏫  Teacher Dashboard", "🎓  Student Self-Assessment"])
+    view = st.radio("Who are you?",
+                    ["👨‍🏫  I'm a Teacher", "🎓  I'm a Student"])
 
     st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='section-header'>System Performance</div>", unsafe_allow_html=True)
-    st.markdown(f"""
-    <div class="metric-card blue">
-        <div class="metric-label">Accuracy</div>
-        <div class="metric-value">{metrics['accuracy']}%</div>
-        <div class="metric-sub">Overall prediction accuracy</div>
-    </div>
-    <div class="metric-card green">
-        <div class="metric-label">At-Risk Detection</div>
-        <div class="metric-value">{metrics['recall']}%</div>
-        <div class="metric-sub">Students caught before failing</div>
-    </div>
-    <div class="metric-card gold">
-        <div class="metric-label">Balance Score</div>
-        <div class="metric-value">{metrics['f1']}%</div>
-        <div class="metric-sub">Precision vs recall balance</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div style='font-size:0.72rem; font-weight:700; text-transform:uppercase;
+        letter-spacing:0.08em; color:#c9c2b9; margin-bottom:0.8rem;'>
+        How accurate is the model?</div>""", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:2rem'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#35354a; font-size:0.7rem; text-align:center; letter-spacing:0.05em;'>ASSE · Phase 4</div>", unsafe_allow_html=True)
+    for label, val, color in [
+        ("✅ Overall accuracy",             f"{ACC}%", "#2d9e6b"),
+        ("📢 Catches at-risk students",     f"{REC}%", "#d97706"),
+        ("⚖️ Balance score",                f"{F1}%",  "#2563eb"),
+    ]:
+        st.markdown(f"""
+        <div style='background:white; border:1px solid #ece8e1; border-radius:12px;
+                    padding:0.7rem 0.9rem; margin-bottom:0.5rem;
+                    box-shadow:0 1px 4px rgba(0,0,0,0.05);'>
+            <div style='font-size:0.75rem; color:#8a8078; font-weight:700;'>{label}</div>
+            <div style='font-size:1.3rem; font-weight:800; color:{color};
+                        font-family:Lora,serif;'>{val}</div>
+        </div>""", unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════
-# TEACHER VIEW — Plain Language, Premium Design
-# ═══════════════════════════════════════════
+    st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:0.72rem; color:#c9c2b9; text-align:center; font-weight:600;'>Phase 4 · ASSE Project</div>", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════
+#  TEACHER VIEW
+# ══════════════════════════════════════════════
 if "Teacher" in view:
-    st.markdown("""
-    <div class="app-header">
-        <div class="app-title">Good morning, <span>Teacher</span> 👋</div>
-        <div class="app-subtitle">Here's a snapshot of how your class is doing — no technical knowledge needed.</div>
-    </div>
-    """, unsafe_allow_html=True)
 
-    # ── KPI Row — plain language
-    high   = len(teacher_df[teacher_df["Risk Level"] == "HIGH"])
-    medium = len(teacher_df[teacher_df["Risk Level"] == "MEDIUM"])
-    low    = len(teacher_df[teacher_df["Risk Level"] == "LOW"])
+    st.markdown("""
+    <div style='margin-bottom:1.5rem;'>
+        <div style='font-family:Lora,serif; font-size:2rem; font-weight:600; color:#2d2926;'>
+            👨‍🏫 Class Overview</div>
+        <div style='color:#8a8078; font-size:0.9rem; margin-top:0.3rem;'>
+            See which students need attention — and why.</div>
+    </div>""", unsafe_allow_html=True)
+
+    # KPI row
+    high   = len(teacher_df[teacher_df["Risk Level"].str.contains("High")])
+    medium = len(teacher_df[teacher_df["Risk Level"].str.contains("Medium")])
+    low    = len(teacher_df[teacher_df["Risk Level"].str.contains("Low")])
     total  = len(teacher_df)
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.markdown(f"""<div class="metric-card blue">
-            <div class="metric-label">👥 Your Class</div>
-            <div class="metric-value">{total}</div>
-            <div class="metric-sub">total students tracked</div>
-        </div>""", unsafe_allow_html=True)
-    with c2:
-        st.markdown(f"""<div class="metric-card red">
-            <div class="metric-label">🚨 Need Urgent Help</div>
-            <div class="metric-value">{high}</div>
-            <div class="metric-sub">{round(high/total*100,1)}% — at serious risk of failing</div>
-        </div>""", unsafe_allow_html=True)
-    with c3:
-        st.markdown(f"""<div class="metric-card amber">
-            <div class="metric-label">⚠️ Worth Watching</div>
-            <div class="metric-value">{medium}</div>
-            <div class="metric-sub">{round(medium/total*100,1)}% — may struggle soon</div>
-        </div>""", unsafe_allow_html=True)
-    with c4:
-        st.markdown(f"""<div class="metric-card green">
-            <div class="metric-label">✅ Doing Well</div>
-            <div class="metric-value">{low}</div>
-            <div class="metric-sub">{round(low/total*100,1)}% — on track</div>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
-
-    # ── What's driving failure — plain language insight cards
-    st.markdown("<div class='section-header'>📊 What's Affecting Your Class Most</div>", unsafe_allow_html=True)
-
-    # Compute top factors from SHAP without exposing it
-    shap_vals_all = explainer.shap_values(X_test_scaled)
-    mean_impact   = np.abs(shap_vals_all).mean(axis=0)
-    top3_idx      = np.argsort(mean_impact)[::-1][:3]
-    factor_labels = {
-        "Motivation_Level":               ("🔥 Low Motivation",          "Many students show low drive or engagement. Small wins and encouragement can make a big difference."),
-        "Peer_Influence":                 ("👥 Peer Influence",           "The social circle matters. Students with negative peer groups are more likely to disengage."),
-        "Access_to_Resources":            ("📚 Limited Resources",        "Some students don't have access to books, internet or study materials outside school."),
-        "Parental_Involvement":           ("🏠 Parental Involvement",     "Students with lower parental support at home tend to struggle more academically."),
-        "Gender_Male":                    ("⚖️ Gender Gap",              "There's a noticeable difference in outcomes between male and female students in this group."),
-        "Extracurricular_Activities_Yes": ("🎭 Extracurricular Balance",  "Students in activities tend to do better — it builds routine and social connection."),
-        "Learning_Disabilities_Yes":      ("🧩 Learning Differences",     "Students with learning disabilities need tailored support — consider extra check-ins."),
-        "Hours_Studied":                  ("⏱️ Study Time",               "Students who study fewer hours per week are significantly more likely to underperform."),
-        "Attendance":                     ("📅 Attendance",               "Missing classes is one of the strongest warning signs. Even a few absences add up quickly."),
-        "Sleep_Hours":                    ("😴 Sleep Quality",            "Students who sleep less than 7 hours are noticeably less able to retain and apply knowledge."),
-        "Previous_Scores":                ("📝 Past Performance",         "Students who struggled before are at elevated risk again — early follow-up helps."),
-        "Tutoring_Sessions":              ("🎓 Tutoring Access",          "Students getting extra tutoring sessions show markedly better outcomes."),
-        "Physical_Activity":              ("🏃 Physical Activity",        "Regular exercise is linked to better focus and academic resilience."),
-        "Stress_Proxy":                   ("😰 Student Stress",           "High stress levels are quietly dragging down performance in a significant portion of students."),
-    }
-    action_map = {
-        "Motivation_Level":               ("💬 Start a 5-min check-in conversation with disengaged students.", "#c8a96e22", "#c8a96e"),
-        "Hours_Studied":                  ("📋 Share a simple weekly study plan template with the class.", "#5b8ff922", "#5b8ff9"),
-        "Attendance":                     ("📞 Reach out to parents of students with 3+ absences this month.", "#e05c5c22", "#e05c5c"),
-        "Sleep_Hours":                    ("🌙 Remind students about healthy sleep at the start of next class.", "#9b7ee822", "#9b7ee8"),
-        "Previous_Scores":                ("📝 Schedule a brief one-on-one review with lower-scoring students.", "#4caf7d22", "#4caf7d"),
-        "Peer_Influence":                 ("🔄 Try rearranging study groups to mix influences.", "#5b8ff922", "#5b8ff9"),
-        "Access_to_Resources":            ("🔗 Share a list of free online resources with the class.", "#4caf7d22", "#4caf7d"),
-        "Parental_Involvement":           ("✉️ Send a brief update email to parents of at-risk students.", "#c8a96e22", "#c8a96e"),
-        "Tutoring_Sessions":              ("🎓 Refer struggling students to available tutoring support.", "#9b7ee822", "#9b7ee8"),
-        "Stress_Proxy":                   ("🧘 Consider a 2-minute mindfulness break at the start of class.", "#4caf7d22", "#4caf7d"),
-        "Physical_Activity":              ("🏃 Encourage short movement breaks during long sessions.", "#e0a43c22", "#e0a43c"),
-        "Extracurricular_Activities_Yes": ("🎭 Support participation in at least one extracurricular activity.", "#5b8ff922", "#5b8ff9"),
-        "Learning_Disabilities_Yes":      ("🧩 Coordinate with school counselor for personalised support plans.", "#e05c5c22", "#e05c5c"),
-        "Gender_Male":                    ("⚖️ Review if any gender-specific barriers exist in your class.", "#9b7ee822", "#9b7ee8"),
-    }
-
-    ins_cols = st.columns(3)
-    for col, fi in zip(ins_cols, top3_idx):
-        fname = feature_columns[fi]
-        icon_title, body = factor_labels.get(fname, (fname, "This factor significantly affects student outcomes."))
-        action_tip, bg, border = action_map.get(fname, ("Follow up with affected students.", "#c8a96e22", "#c8a96e"))
+    k1,k2,k3,k4 = st.columns(4)
+    for col, icon, val, label, bg, fc in [
+        (k1, "👥", total,  "Total Students",                               "#eff6ff","#2563eb"),
+        (k2, "🔴", high,   f"Need Urgent Help\n({round(high/total*100)}% of class)",   "#fee2e2","#dc2626"),
+        (k3, "🟡", medium, f"Need Some Support\n({round(medium/total*100)}% of class)","#fef3c7","#d97706"),
+        (k4, "🟢", low,    f"On Track\n({round(low/total*100)}% of class)",             "#e8f7f1","#2d9e6b"),
+    ]:
         with col:
             st.markdown(f"""
-            <div class="insight-card">
-                <div class="insight-title">{icon_title}</div>
-                <div class="insight-body">{body}</div>
-                <div class="insight-action" style="background:{bg}; color:{border}; border:1px solid {border}44; margin-top:0.8rem;">
-                    👉 {action_tip}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            <div class="kpi" style="background:{bg}; border-color:{fc}33;">
+                <div class="kpi-icon">{icon}</div>
+                <div class="kpi-value" style="color:{fc};">{val}</div>
+                <div class="kpi-label" style="color:{fc}cc;">{label}</div>
+            </div>""", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
 
-    # ── Student List — plain language, visual bars
-    col_f1, col_f2, col_f3 = st.columns([2, 2, 3])
-    with col_f1:
-        risk_filter = st.selectbox("Show students", ["All students", "Urgent (HIGH)", "Watch (MEDIUM)", "Doing well (LOW)"])
-    with col_f2:
-        att_min = st.slider("Minimum attendance (%)", 0, 100, 0)
+    # Filters
+    f1c, f2c, _ = st.columns([2,2,3])
+    with f1c:
+        rf = st.selectbox("Show students at risk level:",
+                          ["All levels","🔴 High only","🟡 Medium only","🟢 Low only"])
+    with f2c:
+        min_att = st.slider("Attendance at least (%)", 0, 100, 0)
 
-    risk_map = {"All students": "All", "Urgent (HIGH)": "HIGH", "Watch (MEDIUM)": "MEDIUM", "Doing well (LOW)": "LOW"}
     filtered = teacher_df.copy()
-    chosen_risk = risk_map[risk_filter]
-    if chosen_risk != "All":
-        filtered = filtered[filtered["Risk Level"] == chosen_risk]
-    filtered = filtered[filtered["Attendance (%)"] >= att_min]
+    if "High"   in rf: filtered = filtered[filtered["Risk Level"].str.contains("High")]
+    elif "Medium" in rf: filtered = filtered[filtered["Risk Level"].str.contains("Medium")]
+    elif "Low"   in rf: filtered = filtered[filtered["Risk Level"].str.contains("Low")]
+    filtered = filtered[filtered["Attendance"].str.rstrip("%").astype(float) >= min_att]
 
-    st.markdown("<div class='section-header'>🧑‍🎓 Student Overview</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:var(--text3);font-size:0.8rem;margin-bottom:0.8rem;'>Showing {len(filtered)} of {total} students</div>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style='font-family:Lora,serif; font-size:1.1rem; font-weight:600;
+                color:#2d2926; margin-bottom:0.4rem; margin-top:0.3rem;'>
+        Student List
+        <span style='color:#8a8078; font-size:0.85rem; font-weight:400;'>
+            — {len(filtered)} students shown</span>
+    </div>""", unsafe_allow_html=True)
 
-    risk_class_map = {"HIGH": "risk-high", "MEDIUM": "risk-medium", "LOW": "risk-low"}
-    risk_emoji_map = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "✅"}
-    risk_label_map = {"HIGH": "Needs urgent help", "MEDIUM": "Worth watching", "LOW": "Doing well"}
+    def style_risk(v):
+        if "High"   in str(v): return "color:#dc2626; font-weight:800"
+        if "Medium" in str(v): return "color:#d97706; font-weight:800"
+        return "color:#2d9e6b; font-weight:800"
+    def style_prob(v):
+        val = float(str(v).rstrip("%"))
+        if val>=70: return "color:#dc2626; font-weight:700"
+        if val>=40: return "color:#d97706; font-weight:700"
+        return "color:#2d9e6b; font-weight:700"
 
-    for _, row in filtered.iterrows():
-        rl     = row["Risk Level"]
-        att    = row["Attendance (%)"]
-        hrs    = row["Hours Studied"]
-        score  = row["Previous Score"]
-        prob   = row["Fail Prob (%)"]
-        att_color  = "#4caf7d" if att >= 75 else "#e0a43c" if att >= 60 else "#e05c5c"
-        hrs_color  = "#4caf7d" if hrs >= 20 else "#e0a43c" if hrs >= 12 else "#e05c5c"
-        prob_color = "#e05c5c" if prob >= 70 else "#e0a43c" if prob >= 40 else "#4caf7d"
+    st.dataframe(
+        filtered.style
+            .applymap(style_risk, subset=["Risk Level"])
+            .applymap(style_prob, subset=["Chance of Failing"])
+            .set_properties(**{"font-size":"14px"}),
+        use_container_width=True, height=330,
+    )
 
-        st.markdown(f"""
-        <div class="student-card">
-            <div class="student-card-id">{row['Student ID']}</div>
-            <div style="flex:1;">
-                <div class="student-card-name">{risk_emoji_map[rl]} {risk_label_map[rl]}</div>
-                <div class="student-card-meta">Failure risk: <span style="color:{prob_color};font-weight:700;">{prob}%</span></div>
-            </div>
-            <div class="mini-bar-wrap" style="min-width:160px;">
-                <div class="mini-bar-label"><span>Attendance</span><span style="color:{att_color};">{att}%</span></div>
-                <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:{att}%;background:{att_color};"></div></div>
-                <div class="mini-bar-label" style="margin-top:4px;"><span>Study hours/week</span><span style="color:{hrs_color};">{hrs}h</span></div>
-                <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:{min(hrs/44*100,100):.0f}%;background:{hrs_color};"></div></div>
-            </div>
-            <div style="min-width:80px;text-align:right;">
-                <span class="{risk_class_map[rl]}">{rl}</span>
-                <div style="font-size:0.72rem;color:var(--text3);margin-top:0.4rem;">Prev. score: {score}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
-    # ── Suggested Actions
-    st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='section-header'>💡 Suggested Next Steps</div>", unsafe_allow_html=True)
-    b1, b2, b3 = st.columns(3)
-    with b1:
-        st.markdown("""
-        <div class="insight-card" style="border-left:3px solid #e05c5c;">
-            <div class="insight-icon">🧑‍💼</div>
-            <div class="insight-title">Refer to a Counsellor</div>
-            <div class="insight-body">Students marked <strong>Urgent</strong> with signs of low motivation should be connected with your school counsellor for a chat.</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with b2:
-        st.markdown("""
-        <div class="insight-card" style="border-left:3px solid #e0a43c;">
-            <div class="insight-icon">📞</div>
-            <div class="insight-title">Contact Parents</div>
-            <div class="insight-body">For students with attendance below 60%, a brief call or message to parents can help turn things around quickly.</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with b3:
-        st.markdown("""
-        <div class="insight-card" style="border-left:3px solid #4caf7d;">
-            <div class="insight-icon">📚</div>
-            <div class="insight-title">Share Learning Resources</div>
-            <div class="insight-body">Each student gets a personalised list of free resources based on their profile. Share these from the Student view to give extra support.</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-
-# ═══════════════════════════════════════════
-# STUDENT VIEW
-# ═══════════════════════════════════════════
-else:
+    # SHAP
     st.markdown("""
-    <div class="app-header">
-        <div class="app-title">Your <span>Academic</span> Health Check 🎓</div>
-        <div class="app-subtitle">Fill in your details below — we'll predict your risk level and give you personalised tips to improve.</div>
-    </div>
+    <div style='font-family:Lora,serif; font-size:1.25rem; font-weight:600;
+                color:#2d2926; margin-bottom:0.2rem;'>
+        📊 What affects students most?</div>
+    <div style='font-size:0.85rem; color:#8a8078; margin-bottom:1rem;'>
+        Each dot is a student. Green = helps pass. Red = increases failure risk.</div>
+    """, unsafe_allow_html=True)
+    with st.spinner("Building chart…"):
+        st.pyplot(fig_beeswarm(), use_container_width=True)
+    plt.close()
+
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+
+    # Interventions
+    st.markdown("""
+    <div style='font-family:Lora,serif; font-size:1.25rem; font-weight:600;
+                color:#2d2926; margin-bottom:0.2rem;'>🛠️ What can you do?</div>
+    <div style='font-size:0.85rem; color:#8a8078; margin-bottom:1rem;'>
+        Suggested actions based on the risk levels in your class.</div>
     """, unsafe_allow_html=True)
 
-    with st.form("student_form"):
-        st.markdown("<div class='section-header'>📋 Your Academic Profile</div>", unsafe_allow_html=True)
+    i1,i2,i3 = st.columns(3)
+    for col, icon, title, bg, fc, desc in [
+        (i1,"🔴","Counsellor Referral","#fee2e2","#dc2626",
+         "Students flagged as HIGH risk should speak with a school counsellor as soon as possible for a one-on-one conversation."),
+        (i2,"📞","Parent Outreach","#fef3c7","#d97706",
+         "Students with attendance below 60% benefit most from a parent check-in call to understand what's happening at home."),
+        (i3,"📚","Share Learning Resources","#e8f7f1","#2d9e6b",
+         "Each student gets a personalised list of 3 free resources matched to their needs — share them via the Student View."),
+    ]:
+        with col:
+            st.markdown(f"""
+            <div style='background:{bg}; border:1.5px solid {fc}33; border-radius:16px;
+                        padding:1.2rem; min-height:160px;'>
+                <div style='font-size:1.5rem; margin-bottom:0.4rem;'>{icon}</div>
+                <div style='font-weight:800; color:{fc}; font-size:0.95rem; margin-bottom:0.4rem;'>{title}</div>
+                <div style='font-size:0.82rem; color:#2d2926; line-height:1.5;'>{desc}</div>
+            </div>""", unsafe_allow_html=True)
 
-        r1c1, r1c2, r1c3 = st.columns(3)
-        with r1c1:
-            hours_studied   = st.slider("Hours Studied per Week", 0, 44, 15)
-            attendance      = st.slider("Attendance (%)", 40, 100, 75)
-            sleep_hours     = st.slider("Sleep Hours per Night", 4, 10, 7)
-        with r1c2:
-            previous_scores = st.slider("Previous Exam Score", 40, 100, 65)
-            tutoring        = st.slider("Tutoring Sessions (per month)", 0, 8, 1)
-            physical        = st.slider("Physical Activity (hrs/week)", 0, 6, 2)
-        with r1c3:
-            motivation_raw  = st.selectbox("Motivation Level", ["Low", "Medium", "High"])
-            resources_raw   = st.selectbox("Access to Resources", ["Low", "Medium", "High"])
-            peer_raw        = st.selectbox("Peer Influence", ["Negative", "Neutral", "Positive"])
-            parental_raw    = st.selectbox("Parental Involvement", ["Low", "Medium", "High"])
 
-        r2c1, r2c2, r2c3 = st.columns(3)
-        with r2c1:
-            gender_male      = st.selectbox("Gender", ["Female", "Male"])
-        with r2c2:
-            extracurricular  = st.selectbox("Extracurricular Activities", ["No", "Yes"])
-        with r2c3:
-            learning_dis     = st.selectbox("Learning Disability", ["No", "Yes"])
+# ══════════════════════════════════════════════
+#  STUDENT VIEW
+# ══════════════════════════════════════════════
+else:
+    st.markdown("""
+    <div style='margin-bottom:0.5rem;'>
+        <div style='font-family:Lora,serif; font-size:2rem; font-weight:600; color:#2d2926;'>
+            🎓 How am I doing?</div>
+        <div style='color:#8a8078; font-size:0.9rem; margin-top:0.3rem;'>
+            Fill in your details below — it only takes 2 minutes.
+            We'll tell you how you're doing and what you can do to improve.</div>
+    </div>
+    <div style='height:0.5rem'></div>
+    """, unsafe_allow_html=True)
 
-        submitted = st.form_submit_button("🔍 Analyze My Profile")
+    with st.form("student_form", border=False):
 
-    if submitted:
-        encode = {"Low": 0, "Medium": 1, "High": 2,
-                  "Negative": 0, "Neutral": 1, "Positive": 2,
-                  "No": 0, "Yes": 1,
-                  "Female": 0, "Male": 1}
-
-        stress_proxy = round(1 - (
-            (encode[motivation_raw] / 2) * 0.4 +
-            (min(hours_studied, 30) / 30) * 0.3 +
-            (min(sleep_hours, 9) / 9) * 0.3
-        ), 4)
-
-        student_raw = {
-            "Motivation_Level":              encode[motivation_raw],
-            "Peer_Influence":                encode[peer_raw],
-            "Access_to_Resources":           encode[resources_raw],
-            "Parental_Involvement":          encode[parental_raw],
-            "Gender_Male":                   encode[gender_male],
-            "Extracurricular_Activities_Yes": encode[extracurricular],
-            "Learning_Disabilities_Yes":     encode[learning_dis],
-            "Hours_Studied":                 float(hours_studied),
-            "Attendance":                    float(attendance),
-            "Sleep_Hours":                   float(sleep_hours),
-            "Previous_Scores":               float(previous_scores),
-            "Tutoring_Sessions":             float(tutoring),
-            "Physical_Activity":             float(physical),
-            "Stress_Proxy":                  stress_proxy,
-        }
-
-        prob_fail, prob_pass, shap_vals, risk, recs, row_scaled = predict_student(
-            model, scaler, explainer, feature_columns, student_raw
-        )
-
-        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-
-        # ── Result Header
-        risk_class = {"HIGH": "risk-high", "MEDIUM": "risk-medium", "LOW": "risk-low"}[risk]
-        risk_emoji = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}[risk]
-        risk_msg   = {"HIGH": "You're at high risk of failing. Act now.",
-                      "MEDIUM": "Moderate risk detected. Stay focused.",
-                      "LOW": "You're on track! Keep it up."}[risk]
-
-        st.markdown(f"""
-        <div class="metric-card" style="border-top: 3px solid {'#e05c5c' if risk=='HIGH' else '#e0a43c' if risk=='MEDIUM' else '#4caf7d'}; margin-bottom:1.5rem;">
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
-                <div>
-                    <div class="metric-label">Your Result</div>
-                    <div style="font-family:'DM Serif Display',serif; font-size:1.5rem; font-weight:400; color:var(--text); margin: 0.3rem 0;">
-                        {risk_emoji} {risk_msg}
-                    </div>
-                </div>
-                <div style="text-align:right;">
-                    <div class="metric-label">Chance of Not Passing</div>
-                    <div class="metric-value" style="color:{'#e05c5c' if risk=='HIGH' else '#e0a43c' if risk=='MEDIUM' else '#4caf7d'};">
-                        {prob_fail*100:.1f}%
-                    </div>
-                    <div class="metric-sub">Chance of passing: {prob_pass*100:.1f}%</div>
-                </div>
-            </div>
-        </div>
+        # Section 1 — Study Habits
+        st.markdown("""
+        <div style='background:white; border-radius:20px; border:1px solid #ece8e1;
+                    padding:1.5rem 1.5rem 1rem 1.5rem; margin-bottom:1rem;
+                    box-shadow:0 2px 8px rgba(0,0,0,0.05);'>
+            <div style='font-family:Lora,serif; font-size:1.1rem; font-weight:600;
+                        color:#2d2926; margin-bottom:1rem;'>📖 Your Study Habits</div>
         """, unsafe_allow_html=True)
 
-        # ── Two columns: Score ring + SHAP
-        col_left, col_right = st.columns([1, 1.6])
+        s1,s2,s3 = st.columns(3)
+        with s1:
+            hours_studied   = st.slider("How many hours do you study per week?", 0, 44, 15,
+                                        help="Count all subjects combined")
+        with s2:
+            attendance      = st.slider("What is your attendance percentage?", 40, 100, 75,
+                                        help="How often do you show up to class?")
+        with s3:
+            previous_scores = st.slider("What was your score on your last exam?", 40, 100, 65,
+                                        help="Out of 100")
 
-        with col_left:
-            st.markdown("<div class='section-header'>Your Score Breakdown</div>", unsafe_allow_html=True)
+        s4,s5,s6 = st.columns(3)
+        with s4:
+            tutoring  = st.slider("How many tutoring sessions per month?", 0, 8, 1)
+        with s5:
+            sleep_hours = st.slider("How many hours do you sleep per night?", 4, 10, 7)
+        with s6:
+            physical  = st.slider("Hours of sport / exercise per week?", 0, 6, 2)
 
-            # Gauge via matplotlib
-            fig_gauge, ax_g = plt.subplots(figsize=(4.5, 3.2), subplot_kw=dict(aspect="equal"))
-            fig_gauge.patch.set_facecolor("#0f0f13")
-            ax_g.set_facecolor("#0f0f13")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-            val = prob_fail
-            colors_g = ["#e05c5c" if val > 0.7 else "#e0a43c" if val > 0.4 else "#4caf7d", "#1c1c26"]
-            wedges = [val, 1 - val]
-            ax_g.pie(wedges, startangle=90, colors=colors_g,
-                     wedgeprops=dict(width=0.35, edgecolor="#0f0f13", linewidth=3))
-            color_text = "#e05c5c" if val > 0.7 else "#e0a43c" if val > 0.4 else "#4caf7d"
-            ax_g.text(0, 0.08, f"{val*100:.1f}%", ha="center", va="center",
-                      fontsize=22, fontweight="800", color=color_text, fontfamily="monospace")
-            ax_g.text(0, -0.22, "Failure Risk", ha="center", va="center",
-                      fontsize=9, color="#5a5868")
-            ax_g.text(0, -0.42, f"Risk Level: {risk}", ha="center", va="center",
-                      fontsize=9, fontweight="700", color=color_text)
-            plt.tight_layout(pad=0)
-            st.pyplot(fig_gauge)
-            plt.close()
+        # Section 2 — About You
+        st.markdown("""
+        <div style='background:white; border-radius:20px; border:1px solid #ece8e1;
+                    padding:1.5rem 1.5rem 1rem 1.5rem; margin-bottom:1rem;
+                    box-shadow:0 2px 8px rgba(0,0,0,0.05);'>
+            <div style='font-family:Lora,serif; font-size:1.1rem; font-weight:600;
+                        color:#2d2926; margin-bottom:1rem;'>🙋 A Bit About You</div>
+        """, unsafe_allow_html=True)
 
-            # Score cards
-            st.markdown(f"""
-            <div class="metric-card green" style="margin-top:0.8rem;">
-                <div class="metric-label">Pass Probability</div>
-                <div class="metric-value">{prob_pass*100:.1f}%</div>
-            </div>
-            <div class="metric-card blue">
-                <div class="metric-label">Previous Score</div>
-                <div class="metric-value">{previous_scores}</div>
-                <div class="metric-sub">/ 100 points</div>
-            </div>
-            <div class="metric-card {'red' if attendance < 60 else 'green'}">
-                <div class="metric-label">Attendance</div>
-                <div class="metric-value">{attendance}%</div>
-            </div>
+        a1,a2,a3 = st.columns(3)
+        with a1:
+            motivation_raw = st.selectbox(
+                "How motivated do you feel about studying?",
+                ["Low — I find it hard to start",
+                 "Medium — I study when I have to",
+                 "High — I genuinely enjoy learning"])
+        with a2:
+            resources_raw = st.selectbox(
+                "How easily can you access study materials?",
+                ["Low — I struggle to get books/internet",
+                 "Medium — I have some access",
+                 "High — I have everything I need"])
+        with a3:
+            peer_raw = st.selectbox(
+                "Do your friends support your studies?",
+                ["Negative — They distract me",
+                 "Neutral — It doesn't affect me",
+                 "Positive — They motivate me"])
+
+        a4,a5,a6 = st.columns(3)
+        with a4:
+            parental_raw = st.selectbox(
+                "Are your parents involved in your education?",
+                ["Low — Not much", "Medium — Somewhat", "High — Very involved"])
+        with a5:
+            gender = st.selectbox("Gender", ["Female","Male"])
+        with a6:
+            extracurricular = st.selectbox(
+                "Do you do extracurricular activities?", ["No","Yes"])
+
+        a7,_,__ = st.columns(3)
+        with a7:
+            learning_dis = st.selectbox(
+                "Do you have a diagnosed learning difficulty?", ["No","Yes"])
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("<div style='height:0.3rem'></div>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("🔍 Show My Results")
+
+    # ── RESULTS ──────────────────────────────────
+    if submitted:
+        enc = {
+            "Low — I find it hard to start":0,
+            "Medium — I study when I have to":1,
+            "High — I genuinely enjoy learning":2,
+            "Low — I struggle to get books/internet":0,
+            "Medium — I have some access":1,
+            "High — I have everything I need":2,
+            "Negative — They distract me":0,
+            "Neutral — It doesn't affect me":1,
+            "Positive — They motivate me":2,
+            "Low — Not much":0,"Medium — Somewhat":1,"High — Very involved":2,
+            "No":0,"Yes":1,"Female":0,"Male":1,
+        }
+
+        stress_proxy = round(1 - (
+            (enc[motivation_raw]/2)*0.4 +
+            (min(hours_studied,30)/30)*0.3 +
+            (min(sleep_hours,9)/9)*0.3
+        ), 4)
+
+        raw = {
+            "Motivation_Level":               enc[motivation_raw],
+            "Peer_Influence":                 enc[peer_raw],
+            "Access_to_Resources":            enc[resources_raw],
+            "Parental_Involvement":           enc[parental_raw],
+            "Gender_Male":                    enc[gender],
+            "Extracurricular_Activities_Yes": enc[extracurricular],
+            "Learning_Disabilities_Yes":      enc[learning_dis],
+            "Hours_Studied":                  float(hours_studied),
+            "Attendance":                     float(attendance),
+            "Sleep_Hours":                    float(sleep_hours),
+            "Previous_Scores":                float(previous_scores),
+            "Tutoring_Sessions":              float(tutoring),
+            "Physical_Activity":              float(physical),
+            "Stress_Proxy":                   stress_proxy,
+        }
+
+        prob_fail, shap_vals, risk, recs = run_prediction(raw)
+
+        # Hero banner
+        hero_cfg = {
+            "HIGH":   ("#fee2e2","#dc2626","🚨",
+                       "You need some support right now",
+                       "Your results suggest you're at high risk of not passing. Don't worry — this is exactly why we built this tool. Your personalised plan is below."),
+            "MEDIUM": ("#fef3c7","#d97706","⚠️",
+                       "You're getting there — stay focused",
+                       "You're doing okay, but there are a few things to work on. Small changes can make a big difference."),
+            "LOW":    ("#e8f7f1","#2d9e6b","🎉",
+                       "You're on the right track!",
+                       "Great job — your habits are working well. Keep it up and check the tips below to stay strong all the way to exam day."),
+        }
+        hbg, hfc, hemoji, htitle, hsub = hero_cfg[risk]
+
+        st.markdown(f"""
+        <div style='background:{hbg}; border:2px solid {hfc}33; border-radius:24px;
+                    padding:2rem; text-align:center; margin-bottom:1.5rem;'>
+            <div style='font-size:3rem; margin-bottom:0.4rem;'>{hemoji}</div>
+            <div style='font-family:Lora,serif; font-size:1.8rem; font-weight:600;
+                        color:{hfc}; margin-bottom:0.5rem;'>{htitle}</div>
+            <div style='color:#2d2926; font-size:0.95rem; max-width:520px;
+                        margin:0 auto; line-height:1.6;'>{hsub}</div>
+        </div>""", unsafe_allow_html=True)
+
+        # ── Left: donut + stats | Right: SHAP
+        col_l, col_r = st.columns([1, 1.7])
+
+        with col_l:
+            st.markdown("""
+            <div style='font-family:Lora,serif; font-size:1.05rem; font-weight:600;
+                        color:#2d2926; margin-bottom:0.3rem;'>Your Risk Score</div>
+            <div style='font-size:0.82rem; color:#8a8078; margin-bottom:0.6rem;'>
+                The lower this number, the better.</div>
             """, unsafe_allow_html=True)
 
-        with col_right:
-            st.markdown("<div class='section-header'>What's Helping & Hurting Your Score</div>", unsafe_allow_html=True)
-            fig_shap = plot_shap_waterfall(shap_vals, feature_columns, 0, student_raw)
-            st.pyplot(fig_shap, use_container_width=True)
+            st.pyplot(fig_donut(prob_fail, risk), use_container_width=False)
             plt.close()
 
-        # ── Recommendations
-        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-        st.markdown("<div class='section-header'>🎯 Top-3 Personalized Learning Recommendations</div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
+            for label, val, bg, fc in [
+                ("📅 Attendance",      f"{attendance}%",
+                 "#e8f7f1" if attendance>=75 else "#fee2e2",
+                 "#2d9e6b" if attendance>=75 else "#dc2626"),
+                ("⏱️ Study Time",      f"{hours_studied}h/week",
+                 "#e8f7f1" if hours_studied>=15 else "#fee2e2",
+                 "#2d9e6b" if hours_studied>=15 else "#dc2626"),
+                ("😴 Sleep",          f"{sleep_hours}h/night",
+                 "#e8f7f1" if sleep_hours>=7 else "#fef3c7",
+                 "#2d9e6b" if sleep_hours>=7 else "#d97706"),
+                ("📝 Last Exam Score",f"{previous_scores}/100",
+                 "#e8f7f1" if previous_scores>=65 else "#fee2e2",
+                 "#2d9e6b" if previous_scores>=65 else "#dc2626"),
+            ]:
+                st.markdown(f"""
+                <div style='background:{bg}; border-radius:12px; padding:0.6rem 0.9rem;
+                            margin-bottom:0.45rem; display:flex; justify-content:space-between;
+                            align-items:center;'>
+                    <span style='font-size:0.82rem; font-weight:700; color:#2d2926;'>{label}</span>
+                    <span style='font-size:0.85rem; font-weight:800; color:{fc};'>{val}</span>
+                </div>""", unsafe_allow_html=True)
 
-        r_cols = st.columns(3)
-        topic_colors = {
-            "Math": "#5b8ff9", "Study Skills": "#9b7ee8", "Productivity": "#e0a43c",
-            "Memory": "#4caf7d", "Science": "#06b6d4", "General": "#5a5868",
-            "Wellness": "#4caf7d", "Motivation": "#e05c5c", "Cognitive": "#9b7ee8",
-        }
-        rank_labels = ["Top Pick", "2nd Pick", "3rd Pick"]
-        for i, (col, rec) in enumerate(zip(r_cols, recs)):
-            tc = topic_colors.get(rec["topic"], "#5a5868")
+        with col_r:
+            st.markdown("""
+            <div style='font-family:Lora,serif; font-size:1.05rem; font-weight:600;
+                        color:#2d2926; margin-bottom:0.3rem;'>
+                What's affecting your chances?</div>
+            <div style='font-size:0.82rem; color:#8a8078; margin-bottom:0.8rem;'>
+                Green bars = things working in your favour.
+                Red bars = things to improve.</div>
+            """, unsafe_allow_html=True)
+
+            st.pyplot(fig_shap_simple(shap_vals, feature_columns),
+                      use_container_width=True)
+            plt.close()
+
+        st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
+
+        # ── Recommendations
+        st.markdown("""
+        <div style='font-family:Lora,serif; font-size:1.3rem; font-weight:600;
+                    color:#2d2926; margin-bottom:0.2rem;'>
+            🎯 Your Top 3 Recommended Resources</div>
+        <div style='font-size:0.85rem; color:#8a8078; margin-bottom:1rem;'>
+            Chosen specifically for you based on where you need the most help — all free.</div>
+        """, unsafe_allow_html=True)
+
+        rc1,rc2,rc3 = st.columns(3)
+        rank_labels = ["Best match for you", "Great for your needs", "Also very helpful"]
+        for col, rec, rl in zip([rc1,rc2,rc3], recs, rank_labels):
             with col:
                 st.markdown(f"""
-                <div class="rec-card">
+                <div style='background:white; border:1.5px solid #ece8e1; border-radius:18px;
+                            padding:1.3rem; min-height:220px; display:flex; flex-direction:column;
+                            justify-content:space-between;
+                            box-shadow:0 2px 10px rgba(0,0,0,0.06);'>
                     <div>
-                        <div style="font-size:1.6rem; margin-bottom:0.5rem;">{rec['icon']}</div>
-                        <div style="color:var(--text); font-weight:600; font-size:0.88rem; line-height:1.45; margin-bottom:0.7rem;">{rec['title']}</div>
+                        <div style='background:{rec["bg"]}; width:44px; height:44px;
+                                    border-radius:12px; display:flex; align-items:center;
+                                    justify-content:center; font-size:1.4rem;
+                                    margin-bottom:0.6rem;'>{rec["icon"]}</div>
+                        <div style='font-weight:800; font-size:0.87rem; color:#2d2926;
+                                    line-height:1.4; margin-bottom:0.3rem;'>{rec["title"]}</div>
+                        <div style='font-size:0.72rem; color:#8a8078;'>{rl}</div>
                     </div>
                     <div>
-                        <span style="background:{tc}20; color:{tc}; border:1px solid {tc}40; border-radius:20px; padding:2px 10px; font-size:0.7rem; font-weight:600;">{rec['topic']}</span>
-                        <div style="margin-top:0.7rem; font-size:0.7rem; color:var(--text3);">{rank_labels[i]}</div>
-                        <a href="{rec['url']}" target="_blank" style="color:var(--accent); font-size:0.8rem; text-decoration:none; font-weight:500;">Open resource →</a>
+                        <span style='background:{rec["bg"]}; color:{rec["ic"]};
+                                     border-radius:20px; padding:2px 10px;
+                                     font-size:0.72rem; font-weight:700;'>{rec["topic"]}</span>
+                        <div style='margin-top:0.5rem;'>
+                            <a href='{rec["url"]}' target='_blank'
+                               style='color:#2563eb; font-size:0.78rem;
+                                      font-weight:700; text-decoration:none;'>
+                               Visit resource →</a>
+                        </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
+                </div>""", unsafe_allow_html=True)
 
-        # ── Action plan
-        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-        st.markdown("<div class='section-header'>📌 Personalized Action Plan</div>", unsafe_allow_html=True)
-        ac1, ac2, ac3 = st.columns(3)
+        st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
 
-        top_neg_idx = np.argsort(shap_vals)[:3]
-        top_neg_feat = [feature_columns[i] for i in top_neg_idx]
+        # ── Action Plan
+        st.markdown("""
+        <div style='font-family:Lora,serif; font-size:1.3rem; font-weight:600;
+                    color:#2d2926; margin-bottom:0.2rem;'>
+            📌 Your Personal Action Plan</div>
+        <div style='font-size:0.85rem; color:#8a8078; margin-bottom:1rem;'>
+            Three things you can start doing this week.</div>
+        """, unsafe_allow_html=True)
 
-        pretty_map = {
-            "Motivation_Level": "Boost your motivation — try TED-Ed talks daily",
-            "Hours_Studied": f"Increase study time — you study {hours_studied}h/week, aim for 25+",
-            "Sleep_Hours": f"Improve sleep — you get {sleep_hours}h/night, aim for 8h",
-            "Attendance": f"Improve attendance — currently at {attendance}%, target 85%+",
-            "Previous_Scores": "Focus on past weak topics to improve your baseline score",
-            "Access_to_Resources": "Use free resources: Khan Academy, OpenStax, YouTube EDU",
-            "Stress_Proxy": "Manage stress — try Headspace or Calm mindfulness apps",
-            "Tutoring_Sessions": "Increase tutoring sessions — even 1 extra/week helps",
-            "Physical_Activity": "Add more exercise — improves cognition and memory",
-            "Peer_Influence": "Seek positive study groups and mentors",
+        tip_map = {
+            "Motivation_Level":  ("💪","Boost your motivation",
+                                  "Watch a TED-Ed talk each morning for 5 minutes. Small inspiration goes a long way."),
+            "Hours_Studied":     ("⏱️","Study more consistently",
+                                  f"You study {hours_studied}h/week. Try adding just 30 min/day — that's 3.5 more hours per week!"),
+            "Sleep_Hours":       ("😴","Improve your sleep",
+                                  f"You get {sleep_hours}h/night. Aim for 8h — even one extra hour improves memory and focus."),
+            "Attendance":        ("📅","Show up more often",
+                                  f"You attend {attendance}% of classes. Missing class means missing explanations you can't easily replace."),
+            "Previous_Scores":   ("📝","Revisit past topics",
+                                  "Go back to the chapters you found hardest last term. A stronger base makes everything easier."),
+            "Access_to_Resources":("📚","Use free online resources",
+                                   "Khan Academy, OpenStax, and YouTube EDU are 100% free and cover almost every subject."),
+            "Stress_Proxy":      ("🧘","Manage your stress",
+                                   "Try 5 minutes of deep breathing before studying. Apps like Calm or Headspace are free for students."),
+            "Tutoring_Sessions": ("🙋","Get extra help",
+                                   "Even one tutoring session per week can dramatically improve your understanding."),
+            "Physical_Activity": ("🏃","Add some exercise",
+                                   "Exercise improves memory and reduces stress. A 20-minute walk before studying really helps!"),
+            "Peer_Influence":    ("👯","Choose motivating study partners",
+                                   "Study groups with positive peers can double your productivity and make it more enjoyable."),
         }
-        tips = [pretty_map.get(f, f"Focus on: {f}") for f in top_neg_feat]
-        for col, tip in zip([ac1, ac2, ac3], tips):
+
+        bottom3 = [feature_columns[i] for i in np.argsort(shap_vals)[:3]]
+        tips    = [tip_map.get(f, ("💡","Focus on improvement",
+                                   f"Pay more attention to {PRETTY.get(f,f)}."))
+                   for f in bottom3]
+
+        t1,t2,t3 = st.columns(3)
+        for col,(icon,title,desc),bg,fc in zip(
+            [t1,t2,t3], tips,
+            ["#eff6ff","#e8f7f1","#fef3c7"],
+            ["#2563eb","#2d9e6b","#d97706"],
+        ):
             with col:
-                st.info(f"💡 {tip}")
+                st.markdown(f"""
+                <div style='background:{bg}; border:1.5px solid {fc}44; border-radius:16px;
+                            padding:1.2rem; min-height:150px;
+                            box-shadow:0 2px 8px rgba(0,0,0,0.05);'>
+                    <div style='font-size:1.3rem; margin-bottom:0.3rem;'>{icon}</div>
+                    <div style='font-weight:800; font-size:0.9rem; color:#2d2926;
+                                margin-bottom:0.25rem;'>{title}</div>
+                    <div style='font-size:0.8rem; color:#2d2926;
+                                line-height:1.45; opacity:0.85;'>{desc}</div>
+                </div>""", unsafe_allow_html=True)
+
+        st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style='background:#f5f3ff; border:1px solid #c4b5fd; border-radius:14px;
+                    padding:1rem 1.2rem; font-size:0.82rem; color:#5b21b6;
+                    font-weight:600; text-align:center;'>
+            ℹ️ This tool uses AI to <em>estimate</em> your risk level based on your answers.
+            It is meant to <strong>guide</strong> you, not to label you.
+            Talk to your teacher or counsellor if you need more support. You've got this! 🌱
+        </div>""", unsafe_allow_html=True)
