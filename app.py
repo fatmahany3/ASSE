@@ -420,14 +420,13 @@ if "Teacher" in view:
         if val>=70: return "color:#dc2626; font-weight:700"
         if val>=40: return "color:#d97706; font-weight:700"
         return "color:#2d9e6b; font-weight:700"
-
-     st.dataframe(
+    st.dataframe(
         filtered.style
         .map(style_risk, subset=["Risk Level"])
         .map(style_prob, subset=["Chance of Failing"])
         .set_properties(**{"font-size":"14px"}),
         use_container_width=True, height=330,
-     )
+    )
 
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
