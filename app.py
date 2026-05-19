@@ -421,11 +421,11 @@ if "Teacher" in view:
         if val>=40: return "color:#d97706; font-weight:700"
         return "color:#2d9e6b; font-weight:700"
 
-    st.dataframe(
+       st.dataframe(
         filtered.style
-            .applymap(style_risk, subset=["Risk Level"])
-            .applymap(style_prob, subset=["Chance of Failing"])
-            .set_properties(**{"font-size":"14px"}),
+        .map(style_risk, subset=["Risk Level"])
+        .map(style_prob, subset=["Chance of Failing"])
+        .set_properties(**{"font-size":"14px"}),
         use_container_width=True, height=330,
     )
 
