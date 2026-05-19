@@ -4,6 +4,7 @@ import numpy as np
 import shap
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import plotly.graph_objects as go
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, recall_score, f1_score
@@ -285,34 +286,160 @@ def fig_shap_simple(shap_vals, feature_names):
     plt.tight_layout(pad=0.5)
     return fig
 
-def fig_beeswarm():
-    shap_all = explainer.shap_values(X_test_scaled)
-    mean_abs = np.abs(shap_all).mean(axis=0)
-    order    = np.argsort(mean_abs)[::-1][:10]
+def plotly_feature_impact():
+    """
+    Friendly horizontal bar: average SHAP impact per factor.
+    Green = on average helps students pass, Red = on average hurts.
+    Non-technical tooltip explains each bar in plain English.
+    """
+    shap_all  = explainer.shap_values(X_test_scaled)          # (n, feats)
+    mean_vals = shap_all.mean(axis=0)                         # signed average
+    mean_abs  = np.abs(shap_all).mean(axis=0)                 # importance rank
 
-    fig, ax = plt.subplots(figsize=(9,5))
-    fig.patch.set_alpha(0); ax.set_facecolor("none")
-    for yi, fi in enumerate(order):
-        sv  = shap_all[:,fi]
-        fv  = X_test_scaled[:,fi]
-        # New fixed line using standard min/max subtraction
-        nfv = (fv - fv.min()) / (fv.max() - fv.min() + 1e-8)
-        clr = plt.cm.RdYlGn_r(nfv)
-        jitter = np.random.uniform(-0.18, 0.18, len(sv))
-        ax.scatter(sv, yi+jitter, c=clr, alpha=0.5, s=10, linewidths=0)
-
+    order  = np.argsort(mean_abs)[::-1][:10]                  # top-10 most important
     labels = [PRETTY.get(feature_columns[i], feature_columns[i]) for i in order]
-    ax.set_yticks(range(len(order)))
-    ax.set_yticklabels(labels, fontsize=9.5, color="#2d2926", fontweight="600")
-    ax.axvline(0, color="#c9c2b9", lw=1.8)
-    ax.tick_params(axis="x", colors="#c9c2b9", labelsize=8)
-    ax.spines[["top","right","left","bottom"]].set_visible(False)
-    ax.set_xlabel("← Helps students pass          Increases failure risk →",
-                  color="#8a8078", fontsize=9)
-    ax.grid(axis="x", color="#ece8e1", lw=0.8)
-    ax.set_title("Which factors matter most across your whole class?",
-                 fontsize=11, color="#2d2926", fontweight="700", pad=10)
-    plt.tight_layout(pad=0.5)
+    values = [mean_vals[i] for i in order]
+    absvls = [mean_abs[i]  for i in order]
+
+    # Human-readable tooltips
+    tip_text = {
+        "Attendance":             "Shows up to class regularly — one of the strongest signals.",
+        "Hours Studied":          "Time spent studying each week.",
+        "Previous Score":         "How the student performed in their last exam.",
+        "Motivation":             "How motivated the student feels about learning.",
+        "Sleep Hours":            "Getting enough sleep helps memory and focus.",
+        "Tutoring Sessions":      "Extra help sessions with a tutor each month.",
+        "Access to Resources":    "Having textbooks, internet, and study materials.",
+        "Parental Involvement":   "How involved parents are in the student's education.",
+        "Stress Level":           "Estimated stress based on motivation, study time & sleep.",
+        "Peer Influence":         "Whether the student's friends support or distract them.",
+        "Physical Activity":      "Exercise each week — helps brain health and concentration.",
+        "Extracurricular Activities": "Clubs, sports, and activities outside school.",
+        "Learning Disability":    "A diagnosed learning difficulty.",
+        "Gender":                 "Student gender (statistical signal in the data).",
+    }
+
+    colors  = ["#2d9e6b" if v < 0 else "#dc2626" for v in values]
+    effects = ["✅ Helps students pass" if v < 0 else "⚠️ Associated with higher failure risk"
+               for v in values]
+
+    hover = [
+        f"<b>{lbl}</b><br>{tip_text.get(lbl,'')}<br><br>{eff}<br>"
+        f"<i>Average impact strength: {abs(av):.3f}</i>"
+        for lbl, av, eff in zip(labels, absvls, effects)
+    ]
+
+    # Sort for display: most impactful at top
+    sorted_order = np.argsort(absvls)
+    labels_s  = [labels[i]  for i in sorted_order]
+    values_s  = [values[i]  for i in sorted_order]
+    colors_s  = [colors[i]  for i in sorted_order]
+    hover_s   = [hover[i]   for i in sorted_order]
+    absvls_s  = [absvls[i]  for i in sorted_order]
+
+    fig = go.Figure()
+
+    # Background band at zero line
+    fig.add_vline(x=0, line_width=1.5, line_color="#c9c2b9")
+
+    fig.add_trace(go.Bar(
+        x=values_s,
+        y=labels_s,
+        orientation="h",
+        marker=dict(
+            color=colors_s,
+            opacity=0.85,
+            line=dict(width=0),
+        ),
+        hovertemplate="%{customdata}<extra></extra>",
+        customdata=hover_s,
+        text=[f"  {'↑ Hurts' if v>0 else '↓ Helps'}" for v in values_s],
+        textfont=dict(size=11, color="#2d2926", family="Nunito"),
+        textposition="outside",
+        width=0.55,
+    ))
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="#faf8f5",
+        font=dict(family="Nunito, sans-serif", color="#2d2926"),
+        height=420,
+        margin=dict(l=10, r=80, t=20, b=60),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#ece8e1",
+            zeroline=False,
+            tickfont=dict(size=10, color="#8a8078"),
+            title=dict(
+                text="← Helps students pass                            Hurts students' chances →",
+                font=dict(size=11, color="#8a8078"),
+                standoff=12,
+            ),
+        ),
+        yaxis=dict(
+            showgrid=False,
+            tickfont=dict(size=12, color="#2d2926", family="Nunito"),
+        ),
+        bargap=0.35,
+        showlegend=False,
+        hoverlabel=dict(
+            bgcolor="white",
+            bordercolor="#ece8e1",
+            font=dict(family="Nunito, sans-serif", size=12, color="#2d2926"),
+        ),
+    )
+
+    # Colour legend as annotations
+    fig.add_annotation(x=0.01, y=-0.14, xref="paper", yref="paper",
+                       text="🟢  Helps students pass",
+                       showarrow=False, font=dict(size=11, color="#2d9e6b"))
+    fig.add_annotation(x=0.35, y=-0.14, xref="paper", yref="paper",
+                       text="🔴  Associated with failing",
+                       showarrow=False, font=dict(size=11, color="#dc2626"))
+
+    return fig
+
+
+def plotly_risk_donut():
+    """Small donut showing class risk breakdown."""
+    high   = teacher_df["Risk Level"].str.contains("High").sum()
+    medium = teacher_df["Risk Level"].str.contains("Medium").sum()
+    low    = teacher_df["Risk Level"].str.contains("Low").sum()
+
+    fig = go.Figure(go.Pie(
+        labels=["🔴 Need urgent help", "🟡 Need some support", "🟢 On track"],
+        values=[high, medium, low],
+        hole=0.62,
+        marker=dict(colors=["#dc2626","#d97706","#2d9e6b"],
+                    line=dict(color="white", width=3)),
+        textinfo="percent",
+        textfont=dict(size=13, family="Nunito, sans-serif"),
+        hovertemplate="<b>%{label}</b><br>%{value} students (%{percent})<extra></extra>",
+        direction="clockwise",
+        sort=False,
+    ))
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=260,
+        margin=dict(l=10, r=10, t=20, b=10),
+        legend=dict(
+            orientation="v",
+            x=1.02, y=0.5,
+            font=dict(family="Nunito, sans-serif", size=11, color="#2d2926"),
+        ),
+        annotations=[dict(
+            text=f"<b>{len(teacher_df)}</b><br><span style='font-size:11px'>students</span>",
+            x=0.5, y=0.5, font=dict(size=15, family="Lora, serif", color="#2d2926"),
+            showarrow=False,
+        )],
+        hoverlabel=dict(
+            bgcolor="white",
+            bordercolor="#ece8e1",
+            font=dict(family="Nunito, sans-serif", size=12),
+        ),
+    )
     return fig
 
 
@@ -421,27 +548,43 @@ if "Teacher" in view:
         if val>=70: return "color:#dc2626; font-weight:700"
         if val>=40: return "color:#d97706; font-weight:700"
         return "color:#2d9e6b; font-weight:700"
+
     st.dataframe(
         filtered.style
-        .map(style_risk, subset=["Risk Level"])
-        .map(style_prob, subset=["Chance of Failing"])
-        .set_properties(**{"font-size":"14px"}),
+            .applymap(style_risk, subset=["Risk Level"])
+            .applymap(style_prob, subset=["Chance of Failing"])
+            .set_properties(**{"font-size":"14px"}),
         use_container_width=True, height=330,
     )
 
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
-    # SHAP
-    st.markdown("""
-    <div style='font-family:Lora,serif; font-size:1.25rem; font-weight:600;
-                color:#2d2926; margin-bottom:0.2rem;'>
-        📊 What affects students most?</div>
-    <div style='font-size:0.85rem; color:#8a8078; margin-bottom:1rem;'>
-        Each dot is a student. Green = helps pass. Red = increases failure risk.</div>
-    """, unsafe_allow_html=True)
-    with st.spinner("Building chart…"):
-        st.pyplot(fig_beeswarm(), use_container_width=True)
-    plt.close()
+    # ── Two Plotly charts
+    ch_left, ch_right = st.columns([2, 1])
+
+    with ch_left:
+        st.markdown("""
+        <div style='font-family:Lora,serif; font-size:1.25rem; font-weight:600;
+                    color:#2d2926; margin-bottom:0.2rem;'>
+            📊 What affects students most?</div>
+        <div style='font-size:0.85rem; color:#8a8078; margin-bottom:0.6rem;'>
+            The longer the bar, the bigger the impact on passing or failing.
+            Hover over any bar to learn more. 👆</div>
+        """, unsafe_allow_html=True)
+        with st.spinner("Building chart…"):
+            st.plotly_chart(plotly_feature_impact(), use_container_width=True,
+                            config={"displayModeBar": False})
+
+    with ch_right:
+        st.markdown("""
+        <div style='font-family:Lora,serif; font-size:1.25rem; font-weight:600;
+                    color:#2d2926; margin-bottom:0.2rem;'>
+            🎯 Class Risk Split</div>
+        <div style='font-size:0.85rem; color:#8a8078; margin-bottom:0.6rem;'>
+            How your class is distributed across risk levels.</div>
+        """, unsafe_allow_html=True)
+        st.plotly_chart(plotly_risk_donut(), use_container_width=True,
+                        config={"displayModeBar": False})
 
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
