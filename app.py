@@ -429,7 +429,8 @@ def plotly_scatter_students():
     fig.update_layout(
         height=450,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="white",
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=10,r=10,t=20,b=10),
 
         xaxis=dict(
@@ -446,13 +447,16 @@ def plotly_scatter_students():
 
         font=dict(
             family="Nunito, sans-serif",
-            color="#2d2926"
+            color="#2d2926",
+            size=13
         ),
+        
     )
 
     return fig
     
 def top_students_cards():
+
     df = teacher_df.copy()
 
     df["RiskValue"] = (
@@ -474,27 +478,31 @@ def top_students_cards():
 
         if att < 60:
             reason = "Low attendance"
-            action = "Contact parents"
+            action = "Contact parents immediately"
+            icon = "📅"
         else:
             reason = "Low academic performance"
-            action = "Schedule tutoring"
+            action = "Schedule tutoring support"
+            icon = "📚"
 
-        cards_html += f'''
+        cards_html += f"""
         <div style="
             background:white;
-            border:1.5px solid #fee2e2;
+            border:1px solid #ece8e1;
             border-left:6px solid #dc2626;
             border-radius:18px;
             padding:1rem;
             margin-bottom:1rem;
-            box-shadow:0 4px 12px rgba(0,0,0,0.05);
+            box-shadow:0 4px 12px rgba(0,0,0,0.06);
         ">
+
             <div style="
                 display:flex;
                 justify-content:space-between;
                 align-items:center;
-                margin-bottom:0.5rem;
+                margin-bottom:0.8rem;
             ">
+
                 <div style="
                     font-size:1rem;
                     font-weight:800;
@@ -506,32 +514,70 @@ def top_students_cards():
                 <div style="
                     background:#fee2e2;
                     color:#dc2626;
-                    padding:4px 10px;
+                    padding:5px 12px;
                     border-radius:20px;
-                    font-size:0.75rem;
-                    font-weight:700;
+                    font-size:0.78rem;
+                    font-weight:800;
                 ">
                     {row["Chance of Failing"]}
                 </div>
+
             </div>
 
             <div style="
-                font-size:0.82rem;
-                color:#8a8078;
-                margin-bottom:0.4rem;
+                background:#faf8f5;
+                border-radius:12px;
+                padding:0.7rem;
+                margin-bottom:0.7rem;
             ">
-                Main issue: <b>{reason}</b>
+
+                <div style="
+                    font-size:0.78rem;
+                    color:#8a8078;
+                    margin-bottom:0.25rem;
+                    font-weight:700;
+                ">
+                    MAIN ISSUE
+                </div>
+
+                <div style="
+                    font-size:0.9rem;
+                    color:#2d2926;
+                    font-weight:700;
+                ">
+                    {icon} {reason}
+                </div>
+
             </div>
 
             <div style="
-                font-size:0.82rem;
-                color:#2d2926;
+                background:#eff6ff;
+                border-radius:12px;
+                padding:0.7rem;
             ">
-                Suggested action:
-                <b>{action}</b>
+
+                <div style="
+                    font-size:0.78rem;
+                    color:#2563eb;
+                    margin-bottom:0.25rem;
+                    font-weight:700;
+                ">
+                    SUGGESTED ACTION
+                </div>
+
+                <div style="
+                    font-size:0.88rem;
+                    color:#2d2926;
+                    font-weight:700;
+                    line-height:1.5;
+                ">
+                    {action}
+                </div>
+
             </div>
+
         </div>
-        '''
+        """
 
     return cards_html
 # ──────────────────────────────────────────────
