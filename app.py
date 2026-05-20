@@ -254,20 +254,20 @@ def fig_donut(prob_fail, risk):
             fontsize=10, color="#8a8078")
     plt.tight_layout(pad=0)
     return fig
-
+ 
 def fig_shap_simple(shap_vals, feature_names):
     order = np.argsort(np.abs(shap_vals))[::-1][:8]
     vals  = shap_vals[order]
     names = [PRETTY.get(feature_names[i], feature_names[i]) for i in order]
-
+ 
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
     fig.patch.set_alpha(0); ax.set_facecolor("none")
-
+ 
     colors = ["#dc2626" if v>0 else "#2d9e6b" for v in vals]
     alphas = [min(1.0, 0.55 + abs(v)*2) for v in vals]
     for i,(v,c,a) in enumerate(zip(vals, colors, alphas)):
         ax.barh(i, v, color=c, alpha=a, height=0.55, linewidth=0, zorder=3)
-
+ 
     ax.set_yticks(range(len(names)))
     ax.set_yticklabels(names, fontsize=10, color="#2d2926", fontweight="600")
     ax.axvline(0, color="#c9c2b9", lw=1.5, zorder=2)
@@ -278,170 +278,284 @@ def fig_shap_simple(shap_vals, feature_names):
     ax.grid(axis="x", color="#ece8e1", lw=0.8, zorder=1)
     lim = max(abs(vals).max()+0.12, 0.2)
     ax.set_xlim(-lim, lim)
-
+ 
     rp = mpatches.Patch(color="#dc2626", alpha=0.8, label="🔴 Working against you")
     gp = mpatches.Patch(color="#2d9e6b", alpha=0.8, label="🟢 Working for you")
     ax.legend(handles=[gp,rp], loc="lower right", fontsize=8,
               framealpha=0, labelcolor="#2d2926")
     plt.tight_layout(pad=0.5)
     return fig
-
+ 
+# ── shared Plotly layout defaults ──────────────────────────
+PLOTLY_BASE = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="Nunito, sans-serif", color="#2d2926"),
+    hoverlabel=dict(
+        bgcolor="white", bordercolor="#ece8e1",
+        font=dict(family="Nunito, sans-serif", size=12, color="#2d2926"),
+    ),
+)
+ 
+TIP_TEXT = {
+    "Attendance":                "How often the student shows up to class.",
+    "Hours Studied":             "Total hours spent studying each week.",
+    "Previous Score":            "Score achieved in the most recent exam.",
+    "Motivation":                "How motivated the student feels about learning.",
+    "Sleep Hours":               "Average hours of sleep per night.",
+    "Tutoring Sessions":         "Number of tutoring sessions per month.",
+    "Access to Resources":       "Availability of books, internet and materials.",
+    "Parental Involvement":      "How much parents support the student's studies.",
+    "Stress Level":              "Estimated stress level (based on motivation, study & sleep).",
+    "Peer Influence":            "Whether friends motivate or distract the student.",
+    "Physical Activity":         "Hours of exercise / sport per week.",
+    "Extracurricular Activities":"Participation in clubs or activities outside school.",
+    "Learning Disability":       "A diagnosed learning difficulty.",
+    "Gender":                    "Student gender.",
+}
+ 
+ 
+# ── 1. Feature Importance ─────────────────────────────────
 def plotly_feature_impact():
-    """
-    Friendly horizontal bar: average SHAP impact per factor.
-    Green = on average helps students pass, Red = on average hurts.
-    Non-technical tooltip explains each bar in plain English.
-    """
-    shap_all  = explainer.shap_values(X_test_scaled)          # (n, feats)
-    mean_vals = shap_all.mean(axis=0)                         # signed average
-    mean_abs  = np.abs(shap_all).mean(axis=0)                 # importance rank
-
-    order  = np.argsort(mean_abs)[::-1][:10]                  # top-10 most important
+    shap_all  = explainer.shap_values(X_test_scaled)
+    mean_vals = shap_all.mean(axis=0)
+    mean_abs  = np.abs(shap_all).mean(axis=0)
+ 
+    order  = np.argsort(mean_abs)[::-1][:10]
     labels = [PRETTY.get(feature_columns[i], feature_columns[i]) for i in order]
-    values = [mean_vals[i] for i in order]
-    absvls = [mean_abs[i]  for i in order]
-
-    # Human-readable tooltips
-    tip_text = {
-        "Attendance":             "Shows up to class regularly — one of the strongest signals.",
-        "Hours Studied":          "Time spent studying each week.",
-        "Previous Score":         "How the student performed in their last exam.",
-        "Motivation":             "How motivated the student feels about learning.",
-        "Sleep Hours":            "Getting enough sleep helps memory and focus.",
-        "Tutoring Sessions":      "Extra help sessions with a tutor each month.",
-        "Access to Resources":    "Having textbooks, internet, and study materials.",
-        "Parental Involvement":   "How involved parents are in the student's education.",
-        "Stress Level":           "Estimated stress based on motivation, study time & sleep.",
-        "Peer Influence":         "Whether the student's friends support or distract them.",
-        "Physical Activity":      "Exercise each week — helps brain health and concentration.",
-        "Extracurricular Activities": "Clubs, sports, and activities outside school.",
-        "Learning Disability":    "A diagnosed learning difficulty.",
-        "Gender":                 "Student gender (statistical signal in the data).",
-    }
-
-    colors  = ["#2d9e6b" if v < 0 else "#dc2626" for v in values]
-    effects = ["✅ Helps students pass" if v < 0 else "⚠️ Associated with higher failure risk"
-               for v in values]
-
+    values = [float(mean_vals[i]) for i in order]
+    absvls = [float(mean_abs[i])  for i in order]
+ 
+    # sort ascending so most-important is at top of horizontal bar
+    asc    = np.argsort(absvls)
+    labels = [labels[i] for i in asc]
+    values = [values[i] for i in asc]
+    absvls = [absvls[i] for i in asc]
+ 
+    # colour: red = hurts (positive SHAP → more failure), green = helps
+    bar_colors  = ["#2d9e6b" if v < 0 else "#ef4444" for v in values]
+    bar_colors2 = ["#86efac" if v < 0 else "#fca5a5" for v in values]   # lighter shade for gradient feel
+ 
+    effects = ["Helps students pass ✅" if v < 0 else "Increases failure risk ⚠️" for v in values]
+ 
+    # percentage of max — used to build plain-language strength
+    max_abs = max(absvls) if max(absvls) > 0 else 1
+    strength_labels = []
+    for a in absvls:
+        pct = a / max_abs
+        if pct >= 0.7:   strength_labels.append("Very strong influence")
+        elif pct >= 0.4: strength_labels.append("Moderate influence")
+        else:            strength_labels.append("Mild influence")
+ 
     hover = [
-        f"<b>{lbl}</b><br>{tip_text.get(lbl,'')}<br><br>{eff}<br>"
-        f"<i>Average impact strength: {abs(av):.3f}</i>"
-        for lbl, av, eff in zip(labels, absvls, effects)
+        f"<b>{lbl}</b><br>"
+        f"<span style='color:#8a8078'>{TIP_TEXT.get(lbl,'')}</span><br><br>"
+        f"<b style='color:{'#2d9e6b' if v<0 else '#ef4444'}'>{eff}</b><br>"
+        f"{sl}"
+        for lbl, v, eff, sl in zip(labels, values, effects, strength_labels)
     ]
-
-    # Sort for display: most impactful at top
-    sorted_order = np.argsort(absvls)
-    labels_s  = [labels[i]  for i in sorted_order]
-    values_s  = [values[i]  for i in sorted_order]
-    colors_s  = [colors[i]  for i in sorted_order]
-    hover_s   = [hover[i]   for i in sorted_order]
-    absvls_s  = [absvls[i]  for i in sorted_order]
-
+ 
     fig = go.Figure()
-
-    # Background band at zero line
-    fig.add_vline(x=0, line_width=1.5, line_color="#c9c2b9")
-
-    fig.add_trace(go.Bar(
-        x=values_s,
-        y=labels_s,
-        orientation="h",
-        marker=dict(
-            color=colors_s,
-            opacity=0.85,
-            line=dict(width=0),
-        ),
-        hovertemplate="%{customdata}<extra></extra>",
-        customdata=hover_s,
-        text=[f"  {'↑ Hurts' if v>0 else '↓ Helps'}" for v in values_s],
-        textfont=dict(size=11, color="#2d2926", family="Nunito"),
-        textposition="outside",
-        width=0.55,
-    ))
-
+ 
+    # subtle zero-line shape
+    fig.add_vline(x=0, line_width=2, line_color="#d1ccc5", line_dash="dot")
+ 
+    # main bars — two traces for green / red so legend works cleanly
+    for mask, name, color, lcolor in [
+        ([v < 0 for v in values], "✅  Helps pass",         "#2d9e6b", "#bbf7d0"),
+        ([v >= 0 for v in values],"⚠️  Increases risk",     "#ef4444", "#fecaca"),
+    ]:
+        idxs = [i for i,m in enumerate(mask) if m]
+        if not idxs:
+            continue
+        fig.add_trace(go.Bar(
+            x=[values[i] for i in idxs],
+            y=[labels[i] for i in idxs],
+            orientation="h",
+            name=name,
+            marker=dict(
+                color=[color]*len(idxs),
+                line=dict(width=0),
+                opacity=0.88,
+            ),
+            customdata=[hover[i] for i in idxs],
+            hovertemplate="%{customdata}<extra></extra>",
+            width=0.60,
+        ))
+ 
+    # strength labels on bars
+    for i, (lbl, v, sl) in enumerate(zip(labels, values, strength_labels)):
+        fig.add_annotation(
+            x=v + (0.004 if v >= 0 else -0.004),
+            y=lbl,
+            text=f" {sl}",
+            showarrow=False,
+            xanchor="left" if v >= 0 else "right",
+            font=dict(size=9.5, color="#8a8078", family="Nunito"),
+        )
+ 
+    lim = max(abs(v) for v in values) * 1.55
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="#faf8f5",
-        font=dict(family="Nunito, sans-serif", color="#2d2926"),
-        height=420,
-        margin=dict(l=10, r=80, t=20, b=60),
+        **PLOTLY_BASE,
+        height=440,
+        margin=dict(l=8, r=8, t=10, b=50),
+        barmode="overlay",
+        bargap=0.28,
+        legend=dict(
+            orientation="h", x=0.01, y=-0.10,
+            font=dict(size=12, color="#2d2926"),
+            bgcolor="rgba(0,0,0,0)",
+        ),
         xaxis=dict(
-            showgrid=True,
-            gridcolor="#ece8e1",
+            range=[-lim, lim],
+            showgrid=True, gridcolor="#ece8e1", gridwidth=1,
             zeroline=False,
-            tickfont=dict(size=10, color="#8a8078"),
+            tickformat=".2f",
+            tickfont=dict(size=10, color="#b0a899"),
             title=dict(
-                text="← Helps students pass                            Hurts students' chances →",
-                font=dict(size=11, color="#8a8078"),
-                standoff=12,
+                text="◀  Helps students pass          Hurts students' chances  ▶",
+                font=dict(size=11, color="#b0a899"),
+                standoff=10,
             ),
         ),
         yaxis=dict(
             showgrid=False,
-            tickfont=dict(size=12, color="#2d2926", family="Nunito"),
-        ),
-        bargap=0.35,
-        showlegend=False,
-        hoverlabel=dict(
-            bgcolor="white",
-            bordercolor="#ece8e1",
-            font=dict(family="Nunito, sans-serif", size=12, color="#2d2926"),
+            tickfont=dict(size=12.5, color="#2d2926", family="Nunito"),
         ),
     )
-
-    # Colour legend as annotations
-    fig.add_annotation(x=0.01, y=-0.14, xref="paper", yref="paper",
-                       text="🟢  Helps students pass",
-                       showarrow=False, font=dict(size=11, color="#2d9e6b"))
-    fig.add_annotation(x=0.35, y=-0.14, xref="paper", yref="paper",
-                       text="🔴  Associated with failing",
-                       showarrow=False, font=dict(size=11, color="#dc2626"))
-
     return fig
-
-
-def plotly_risk_donut():
-    """Small donut showing class risk breakdown."""
-    high   = teacher_df["Risk Level"].str.contains("High").sum()
-    medium = teacher_df["Risk Level"].str.contains("Medium").sum()
-    low    = teacher_df["Risk Level"].str.contains("Low").sum()
-
+ 
+ 
+# ── 2. Scatter: Attendance vs Previous Score ──────────────
+def plotly_scatter(filtered_df=None):
+    df = filtered_df if filtered_df is not None else teacher_df
+ 
+    att   = df["Attendance"].str.rstrip("%").astype(float).tolist()
+    score = df["Previous Score"].str.split("/").str[0].astype(float).tolist()
+    risk  = df["Risk Level"].tolist()
+    prob  = df["Chance of Failing"].str.rstrip("%").astype(float).tolist()
+    ids   = df["Student"].tolist()
+ 
+    color_map = {"🔴 High": "#ef4444", "🟡 Medium": "#f59e0b", "🟢 Low": "#2d9e6b"}
+    colors    = [color_map.get(r, "#94a3b8") for r in risk]
+ 
+    hover = [
+        f"<b>{sid}</b><br>"
+        f"Attendance: <b>{a:.0f}%</b><br>"
+        f"Previous Score: <b>{s:.0f}/100</b><br>"
+        f"Chance of Failing: <b style='color:{color_map.get(r,\"#888\")}'>{p:.1f}%</b><br>"
+        f"Risk: <b>{r}</b>"
+        for sid, a, s, r, p in zip(ids, att, score, risk, prob)
+    ]
+ 
+    fig = go.Figure()
+ 
+    # reference quadrant shading
+    fig.add_shape(type="rect", x0=0, x1=75, y0=0, y1=65,
+                  fillcolor="rgba(239,68,68,0.05)", line_width=0)
+    fig.add_shape(type="rect", x0=75, x1=101, y0=65, y1=101,
+                  fillcolor="rgba(45,158,107,0.05)", line_width=0)
+ 
+    # quadrant labels
+    for txt, x, y, color in [
+        ("Low attendance &<br>low scores", 57, 58, "#ef4444"),
+        ("Good attendance &<br>good scores", 88, 88, "#2d9e6b"),
+    ]:
+        fig.add_annotation(x=x, y=y, text=txt, showarrow=False,
+                           font=dict(size=9, color=color, family="Nunito"),
+                           align="center", opacity=0.7)
+ 
+    # scatter points — one trace per risk group so legend is clean
+    for risk_label, clr, sym in [
+        ("🔴 High",   "#ef4444", "circle"),
+        ("🟡 Medium", "#f59e0b", "circle"),
+        ("🟢 Low",    "#2d9e6b", "circle"),
+    ]:
+        idxs = [i for i,r in enumerate(risk) if r == risk_label]
+        if not idxs: continue
+        fig.add_trace(go.Scatter(
+            x=[att[i] for i in idxs],
+            y=[score[i] for i in idxs],
+            mode="markers",
+            name=risk_label,
+            marker=dict(
+                color=clr,
+                size=[max(9, min(20, prob[i]/5)) for i in idxs],
+                opacity=0.78,
+                line=dict(color="white", width=1.5),
+            ),
+            customdata=[hover[i] for i in idxs],
+            hovertemplate="%{customdata}<extra></extra>",
+        ))
+ 
+    # divider lines
+    fig.add_vline(x=75, line_dash="dash", line_color="#c9c2b9", line_width=1.2)
+    fig.add_hline(y=65, line_dash="dash", line_color="#c9c2b9", line_width=1.2)
+ 
+    fig.update_layout(
+        **PLOTLY_BASE,
+        height=400,
+        margin=dict(l=8, r=8, t=10, b=10),
+        xaxis=dict(
+            range=[38, 102], showgrid=True, gridcolor="#ece8e1",
+            zeroline=False, tickfont=dict(size=10, color="#b0a899"),
+            title=dict(text="Attendance (%)",
+                       font=dict(size=11, color="#8a8078")),
+        ),
+        yaxis=dict(
+            range=[35, 102], showgrid=True, gridcolor="#ece8e1",
+            zeroline=False, tickfont=dict(size=10, color="#b0a899"),
+            title=dict(text="Previous Exam Score",
+                       font=dict(size=11, color="#8a8078")),
+        ),
+        legend=dict(
+            orientation="h", x=0.01, y=-0.12,
+            font=dict(size=11, color="#2d2926"),
+            bgcolor="rgba(0,0,0,0)",
+        ),
+    )
+    return fig
+ 
+ 
+# ── 3. Risk Donut ────────────────────────────────────────
+def plotly_risk_donut(df=None):
+    df = df if df is not None else teacher_df
+    high   = df["Risk Level"].str.contains("High").sum()
+    medium = df["Risk Level"].str.contains("Medium").sum()
+    low    = df["Risk Level"].str.contains("Low").sum()
+    total  = len(df)
+ 
     fig = go.Figure(go.Pie(
-        labels=["🔴 Need urgent help", "🟡 Need some support", "🟢 On track"],
+        labels=["Need urgent help", "Need some support", "On track"],
         values=[high, medium, low],
-        hole=0.62,
-        marker=dict(colors=["#dc2626","#d97706","#2d9e6b"],
-                    line=dict(color="white", width=3)),
-        textinfo="percent",
-        textfont=dict(size=13, family="Nunito, sans-serif"),
-        hovertemplate="<b>%{label}</b><br>%{value} students (%{percent})<extra></extra>",
+        hole=0.65,
+        marker=dict(
+            colors=["#ef4444","#f59e0b","#2d9e6b"],
+            line=dict(color="white", width=4),
+        ),
+        textinfo="percent+label",
+        textfont=dict(size=11, family="Nunito, sans-serif"),
+        hovertemplate="<b>%{label}</b><br>%{value} students · %{percent}<extra></extra>",
         direction="clockwise",
         sort=False,
+        textposition="outside",
+        pull=[0.04, 0.02, 0],
     ))
-
+ 
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        height=260,
-        margin=dict(l=10, r=10, t=20, b=10),
-        legend=dict(
-            orientation="v",
-            x=1.02, y=0.5,
-            font=dict(family="Nunito, sans-serif", size=11, color="#2d2926"),
-        ),
+        **PLOTLY_BASE,
+        height=320,
+        margin=dict(l=30, r=30, t=20, b=30),
+        showlegend=False,
         annotations=[dict(
-            text=f"<b>{len(teacher_df)}</b><br><span style='font-size:11px'>students</span>",
-            x=0.5, y=0.5, font=dict(size=15, family="Lora, serif", color="#2d2926"),
+            text=f"<b style='font-size:22px'>{total}</b><br>"
+                 f"<span style='font-size:12px;color:#8a8078'>students</span>",
+            x=0.5, y=0.5,
+            font=dict(size=16, family="Lora, serif", color="#2d2926"),
             showarrow=False,
         )],
-        hoverlabel=dict(
-            bgcolor="white",
-            bordercolor="#ece8e1",
-            font=dict(family="Nunito, sans-serif", size=12),
-        ),
     )
     return fig
-
 
 # ──────────────────────────────────────────────
 # SIDEBAR
