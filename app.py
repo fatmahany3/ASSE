@@ -551,9 +551,9 @@ if "Teacher" in view:
 
     st.dataframe(
         filtered.style
-            .applymap(style_risk, subset=["Risk Level"])
-            .applymap(style_prob, subset=["Chance of Failing"])
-            .set_properties(**{"font-size":"14px"}),
+        .map(style_risk, subset=["Risk Level"])
+        .map(style_prob, subset=["Chance of Failing"])
+        .set_properties(**{"font-size":"14px"}),
         use_container_width=True, height=330,
     )
 
