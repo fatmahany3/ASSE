@@ -439,14 +439,13 @@ def plotly_scatter(filtered_df=None):
     color_map = {"🔴 High": "#ef4444", "🟡 Medium": "#f59e0b", "🟢 Low": "#2d9e6b"}
     colors    = [color_map.get(r, "#94a3b8") for r in risk]
 
-    hover = [
+   hover = [
         f"<b>{sid}</b><br>"
         f"Attendance: <b>{a:.0f}%</b><br>"
         f"Previous Score: <b>{s:.0f}/100</b><br>"
-        f"Chance of Failing: <b style='color:{color_map.get(r,\"#888\")}'>{p:.1f}%</b><br>"
+        f"Chance of Failing: <b style='color:{color_map.get(r, '#888')}'>{p:.1f}%</b><br>"
         f"Risk: <b>{r}</b>"
-        # Make sure there are no hidden characters or stray backslashes inside the {}
-        f"Your message: {[something for sid, a, s, r, p in zip(ids, att, score, risk, prob)]}"
+        for sid, a, s, r, p in zip(ids, att, score, risk, prob)
     ]
 
     fig = go.Figure()
