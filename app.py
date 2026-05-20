@@ -389,15 +389,15 @@ def plotly_feature_impact():
         ),
     )
 
-    # Colour legend as annotations
-    # fig.add_annotation(x=0.01, y=-0.14, xref="paper", yref="paper",
-    #                    text="🟢  Helps students pass",
-    #                    showarrow=False, font=dict(size=11, color="#2d9e6b"))
-    # fig.add_annotation(x=0.35, y=-0.14, xref="paper", yref="paper",
-    #                    text="🔴  Associated with failing",
-    #                    showarrow=False, font=dict(size=11, color="#dc2626"))
+    Colour legend as annotations
+    fig.add_annotation(x=0.01, y=-0.14, xref="paper", yref="paper",
+                       text="🟢  Helps students pass",
+                       showarrow=False, font=dict(size=11, color="#2d9e6b"))
+    fig.add_annotation(x=0.35, y=-0.14, xref="paper", yref="paper",
+                       text="🔴  Associated with failing",
+                       showarrow=False, font=dict(size=11, color="#dc2626"))
 
-    # return fig
+    return fig
 
 
 def plotly_risk_donut():
