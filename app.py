@@ -430,7 +430,6 @@ def plotly_scatter_students():
         height=450,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="#ffffff",
-        paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=10,r=10,t=20,b=10),
 
         xaxis=dict(
