@@ -443,12 +443,12 @@ def plotly_scatter(filtered_df=None):
         f"<b>{sid}</b><br>"
         f"Attendance: <b>{a:.0f}%</b><br>"
         f"Previous Score: <b>{s:.0f}/100</b><br>"
-        f"Chance of Failing: <b style='color:{color_map.get(r,\"#888\")}'>{p:.1f}%</b><br>"
+        f"Chance of Failing: <b style='color:{color_map.get(r, '#888')}'>{p:.1f}%</b><br>"
         f"Risk: <b>{r}</b>"
         for sid, a, s, r, p in zip(ids, att, score, risk, prob)
     ]
  
-    fig = go.Figure()
+    fig = go.Figure() 
  
     # reference quadrant shading
     fig.add_shape(type="rect", x0=0, x1=75, y0=0, y1=65,
