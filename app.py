@@ -651,114 +651,114 @@ if "Teacher" in view:
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
     # ── Two Plotly charts
+        # ─────────────────────────────────────
+    # FEATURE IMPORTANCE
     # ─────────────────────────────────────
-# FEATURE IMPORTANCE
-# ─────────────────────────────────────
-
-st.markdown("""
-<div style='font-family:Lora,serif;
-            font-size:1.35rem;
-            font-weight:600;
-            color:#2d2926;
-            margin-bottom:0.2rem;'>
-    📊 What impacts student success the most?
-</div>
-
-<div style='font-size:0.86rem;
-            color:#8a8078;
-            margin-bottom:0.8rem;'>
-    These are the strongest factors influencing whether students succeed or struggle.
-</div>
-""", unsafe_allow_html=True)
-
-st.plotly_chart(
-    plotly_feature_impact(),
-    use_container_width=True,
-    config={"displayModeBar": False}
-)
-
-st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-
-# ─────────────────────────────────────
-# SCATTER + TOP STUDENTS
-# ─────────────────────────────────────
-
-left,right = st.columns([2.2,1])
-
-with left:
-
+    
     st.markdown("""
     <div style='font-family:Lora,serif;
-                font-size:1.25rem;
+                font-size:1.35rem;
                 font-weight:600;
                 color:#2d2926;
                 margin-bottom:0.2rem;'>
-        🎯 Attendance vs Performance
+        📊 What impacts student success the most?
     </div>
-
-    <div style='font-size:0.84rem;
+    
+    <div style='font-size:0.86rem;
                 color:#8a8078;
-                margin-bottom:0.6rem;'>
-        Bigger circles = higher failure risk.
+                margin-bottom:0.8rem;'>
+        These are the strongest factors influencing whether students succeed or struggle.
     </div>
     """, unsafe_allow_html=True)
-
+    
     st.plotly_chart(
-        plotly_scatter_students(),
+        plotly_feature_impact(),
         use_container_width=True,
         config={"displayModeBar": False}
     )
-
-with right:
-
+    
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+    
+    # ─────────────────────────────────────
+    # SCATTER + TOP STUDENTS
+    # ─────────────────────────────────────
+    
+    left,right = st.columns([2.2,1])
+    
+    with left:
+    
+        st.markdown("""
+        <div style='font-family:Lora,serif;
+                    font-size:1.25rem;
+                    font-weight:600;
+                    color:#2d2926;
+                    margin-bottom:0.2rem;'>
+            🎯 Attendance vs Performance
+        </div>
+    
+        <div style='font-size:0.84rem;
+                    color:#8a8078;
+                    margin-bottom:0.6rem;'>
+            Bigger circles = higher failure risk.
+        </div>
+        """, unsafe_allow_html=True)
+    
+        st.plotly_chart(
+            plotly_scatter_students(),
+            use_container_width=True,
+            config={"displayModeBar": False}
+        )
+    
+    with right:
+    
+        st.markdown("""
+        <div style='font-family:Lora,serif;
+                    font-size:1.25rem;
+                    font-weight:600;
+                    color:#2d2926;
+                    margin-bottom:0.2rem;'>
+            🚨 Students Needing Attention
+        </div>
+    
+        <div style='font-size:0.84rem;
+                    color:#8a8078;
+                    margin-bottom:0.8rem;'>
+            Highest predicted failure risk in the class.
+        </div>
+        """, unsafe_allow_html=True)
+    
+        st.markdown(
+            top_students_cards(),
+            unsafe_allow_html=True
+        )
+    
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+    
+    # ─────────────────────────────────────
+    # CLASS RISK DONUT
+    # ─────────────────────────────────────
+    
     st.markdown("""
     <div style='font-family:Lora,serif;
                 font-size:1.25rem;
                 font-weight:600;
                 color:#2d2926;
                 margin-bottom:0.2rem;'>
-        🚨 Students Needing Attention
+        🎯 Class Risk Distribution
     </div>
-
+    
     <div style='font-size:0.84rem;
                 color:#8a8078;
-                margin-bottom:0.8rem;'>
-        Highest predicted failure risk in the class.
+                margin-bottom:0.6rem;'>
+        Overall distribution of student risk levels.
     </div>
     """, unsafe_allow_html=True)
-
-    st.markdown(
-        top_students_cards(),
-        unsafe_allow_html=True
+    
+    st.plotly_chart(
+        plotly_risk_donut(),
+        use_container_width=True,
+        config={"displayModeBar": False}
     )
-
-st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-
-# ─────────────────────────────────────
-# CLASS RISK DONUT
-# ─────────────────────────────────────
-
-st.markdown("""
-<div style='font-family:Lora,serif;
-            font-size:1.25rem;
-            font-weight:600;
-            color:#2d2926;
-            margin-bottom:0.2rem;'>
-    🎯 Class Risk Distribution
-</div>
-
-<div style='font-size:0.84rem;
-            color:#8a8078;
-            margin-bottom:0.6rem;'>
-    Overall distribution of student risk levels.
-</div>
-""", unsafe_allow_html=True)
-
-st.plotly_chart(
-    plotly_risk_donut(),
-    use_container_width=True,
-    config={"displayModeBar": False}
-)
     # Interventions
     st.markdown("""
     <div style='font-family:Lora,serif; font-size:1.25rem; font-weight:600;
