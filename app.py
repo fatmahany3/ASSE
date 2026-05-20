@@ -445,7 +445,8 @@ def plotly_scatter(filtered_df=None):
         f"Previous Score: <b>{s:.0f}/100</b><br>"
         f"Chance of Failing: <b style='color:{color_map.get(r,\"#888\")}'>{p:.1f}%</b><br>"
         f"Risk: <b>{r}</b>"
-        for sid, a, s, r, p in zip(ids, att, score, risk, prob)
+        # Make sure there are no hidden characters or stray backslashes inside the {}
+        f"Your message: {[something for sid, a, s, r, p in zip(ids, att, score, risk, prob)]}"
     ]
 
     fig = go.Figure()
