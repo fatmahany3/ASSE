@@ -255,147 +255,81 @@ def fig_donut(prob_fail, risk):
     plt.tight_layout(pad=0)
     return fig
 
-def fig_shap_simple(shap_vals, feature_names):
-    order = np.argsort(np.abs(shap_vals))[::-1][:8]
-    vals  = shap_vals[order]
-    names = [PRETTY.get(feature_names[i], feature_names[i]) for i in order]
-
-    fig, ax = plt.subplots(figsize=(7.5, 4.2))
-    fig.patch.set_alpha(0); ax.set_facecolor("none")
-
-    colors = ["#dc2626" if v>0 else "#2d9e6b" for v in vals]
-    alphas = [min(1.0, 0.55 + abs(v)*2) for v in vals]
-    for i,(v,c,a) in enumerate(zip(vals, colors, alphas)):
-        ax.barh(i, v, color=c, alpha=a, height=0.55, linewidth=0, zorder=3)
-
-    ax.set_yticks(range(len(names)))
-    ax.set_yticklabels(names, fontsize=10, color="#2d2926", fontweight="600")
-    ax.axvline(0, color="#c9c2b9", lw=1.5, zorder=2)
-    ax.tick_params(axis="x", colors="#c9c2b9", labelsize=8)
-    ax.spines[["top","right","left","bottom"]].set_visible(False)
-    ax.set_xlabel("← Helps you pass              Hurts your chances →",
-                  color="#8a8078", fontsize=8.5, labelpad=6)
-    ax.grid(axis="x", color="#ece8e1", lw=0.8, zorder=1)
-    lim = max(abs(vals).max()+0.12, 0.2)
-    ax.set_xlim(-lim, lim)
-
-    rp = mpatches.Patch(color="#dc2626", alpha=0.8, label="🔴 Working against you")
-    gp = mpatches.Patch(color="#2d9e6b", alpha=0.8, label="🟢 Working for you")
-    ax.legend(handles=[gp,rp], loc="lower right", fontsize=8,
-              framealpha=0, labelcolor="#2d2926")
-    plt.tight_layout(pad=0.5)
-    return fig
 
 def plotly_feature_impact():
-    """
-    Friendly horizontal bar: average SHAP impact per factor.
-    Green = on average helps students pass, Red = on average hurts.
-    Non-technical tooltip explains each bar in plain English.
-    """
-    shap_all  = explainer.shap_values(X_test_scaled)          # (n, feats)
-    mean_vals = shap_all.mean(axis=0)                         # signed average
-    mean_abs  = np.abs(shap_all).mean(axis=0)                 # importance rank
+    shap_all  = explainer.shap_values(X_test_scaled)
+    mean_vals = shap_all.mean(axis=0)
+    mean_abs  = np.abs(shap_all).mean(axis=0)
 
-    order  = np.argsort(mean_abs)[::-1][:10]                  # top-10 most important
+    order  = np.argsort(mean_abs)[::-1][:10]
+
     labels = [PRETTY.get(feature_columns[i], feature_columns[i]) for i in order]
     values = [mean_vals[i] for i in order]
-    absvls = [mean_abs[i]  for i in order]
+    impacts = [mean_abs[i] for i in order]
 
-    # Human-readable tooltips
-    tip_text = {
-        "Attendance":             "Shows up to class regularly — one of the strongest signals.",
-        "Hours Studied":          "Time spent studying each week.",
-        "Previous Score":         "How the student performed in their last exam.",
-        "Motivation":             "How motivated the student feels about learning.",
-        "Sleep Hours":            "Getting enough sleep helps memory and focus.",
-        "Tutoring Sessions":      "Extra help sessions with a tutor each month.",
-        "Access to Resources":    "Having textbooks, internet, and study materials.",
-        "Parental Involvement":   "How involved parents are in the student's education.",
-        "Stress Level":           "Estimated stress based on motivation, study time & sleep.",
-        "Peer Influence":         "Whether the student's friends support or distract them.",
-        "Physical Activity":      "Exercise each week — helps brain health and concentration.",
-        "Extracurricular Activities": "Clubs, sports, and activities outside school.",
-        "Learning Disability":    "A diagnosed learning difficulty.",
-        "Gender":                 "Student gender (statistical signal in the data).",
+    icons = {
+        "Attendance":"📅",
+        "Hours Studied":"⏱️",
+        "Previous Score":"📝",
+        "Motivation":"💪",
+        "Sleep Hours":"😴",
+        "Tutoring Sessions":"🙋",
+        "Access to Resources":"📚",
+        "Parental Involvement":"👨‍👩‍👧",
+        "Stress Level":"🧘",
+        "Peer Influence":"👯",
+        "Physical Activity":"🏃",
     }
 
-    colors  = ["#2d9e6b" if v < 0 else "#dc2626" for v in values]
-    effects = ["✅ Helps students pass" if v < 0 else "⚠️ Associated with higher failure risk"
-               for v in values]
+    labels = [f"{icons.get(lbl,'📌')} {lbl}" for lbl in labels]
 
-    hover = [
-        f"<b>{lbl}</b><br>{tip_text.get(lbl,'')}<br><br>{eff}<br>"
-        f"<i>Average impact strength: {abs(av):.3f}</i>"
-        for lbl, av, eff in zip(labels, absvls, effects)
+    colors = [
+        "#dc2626" if v > 0 else "#2d9e6b"
+        for v in values
     ]
-
-    # Sort for display: most impactful at top
-    sorted_order = np.argsort(absvls)
-    labels_s  = [labels[i]  for i in sorted_order]
-    values_s  = [values[i]  for i in sorted_order]
-    colors_s  = [colors[i]  for i in sorted_order]
-    hover_s   = [hover[i]   for i in sorted_order]
-    absvls_s  = [absvls[i]  for i in sorted_order]
 
     fig = go.Figure()
 
-    # Background band at zero line
-    fig.add_vline(x=0, line_width=1.5, line_color="#c9c2b9")
-
     fig.add_trace(go.Bar(
-        x=values_s,
-        y=labels_s,
+        x=impacts[::-1],
+        y=labels[::-1],
         orientation="h",
         marker=dict(
-            color=colors_s,
-            opacity=0.85,
+            color=colors[::-1],
             line=dict(width=0),
         ),
-        hovertemplate="%{customdata}<extra></extra>",
-        customdata=hover_s,
-        text=[f"  {'↑ Hurts' if v>0 else '↓ Helps'}" for v in values_s],
-        textfont=dict(size=11, color="#2d2926", family="Nunito"),
-        textposition="outside",
-        width=0.55,
+        text=[
+            "Hurts performance" if v > 0 else "Supports success"
+            for v in values[::-1]
+        ],
+        textposition="inside",
+        insidetextanchor="middle",
+        hovertemplate=
+        "<b>%{y}</b><br>" +
+        "Impact Strength: %{x:.3f}<extra></extra>",
     ))
 
     fig.update_layout(
+        height=500,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="#faf8f5",
-        font=dict(family="Nunito, sans-serif", color="#2d2926"),
-        height=420,
-        margin=dict(l=10, r=80, t=20, b=60),
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=20, b=20),
+        font=dict(
+            family="Nunito, sans-serif",
+            color="#2d2926"
+        ),
         xaxis=dict(
+            title="Overall Impact on Student Outcomes",
             showgrid=True,
             gridcolor="#ece8e1",
             zeroline=False,
-            tickfont=dict(size=10, color="#8a8078"),
-            title=dict(
-                text="← Helps students pass                            Hurts students' chances →",
-                font=dict(size=11, color="#8a8078"),
-                standoff=12,
-            ),
         ),
         yaxis=dict(
             showgrid=False,
-            tickfont=dict(size=12, color="#2d2926", family="Nunito"),
+            tickfont=dict(size=12),
         ),
-        bargap=0.35,
-        showlegend=False,
-        hoverlabel=dict(
-            bgcolor="white",
-            bordercolor="#ece8e1",
-            font=dict(family="Nunito, sans-serif", size=12, color="#2d2926"),
-        ),
+        bargap=0.28,
     )
-
-    # Colour legend as annotations
-    fig.add_annotation(x=0.01, y=-0.14, xref="paper", yref="paper",
-                       text="🟢  Helps students pass",
-                       showarrow=False, font=dict(size=11, color="#2d9e6b"))
-    fig.add_annotation(x=0.35, y=-0.14, xref="paper", yref="paper",
-                       text="🔴  Associated with failing",
-                       showarrow=False, font=dict(size=11, color="#dc2626"))
 
     return fig
 
@@ -441,8 +375,165 @@ def plotly_risk_donut():
         ),
     )
     return fig
+    
+def plotly_scatter_students():
+    df = teacher_df.copy()
 
+    attendance = (
+        df["Attendance"]
+        .str.rstrip("%")
+        .astype(float)
+    )
 
+    scores = (
+        df["Previous Score"]
+        .str.replace("/100","")
+        .astype(float)
+    )
+
+    risk = (
+        df["Chance of Failing"]
+        .str.rstrip("%")
+        .astype(float)
+    )
+
+    colors = []
+    for r in risk:
+        if r >= 70:
+            colors.append("#dc2626")
+        elif r >= 40:
+            colors.append("#d97706")
+        else:
+            colors.append("#2d9e6b")
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=attendance,
+        y=scores,
+        mode="markers",
+        text=df["Student"],
+        marker=dict(
+            size=risk/2.2,
+            color=colors,
+            opacity=0.78,
+            line=dict(width=2, color="white")
+        ),
+        hovertemplate=
+        "<b>%{text}</b><br>" +
+        "Attendance: %{x}%<br>" +
+        "Previous Score: %{y}<br>" +
+        "Failure Risk Size Bubble<extra></extra>"
+    ))
+
+    fig.update_layout(
+        height=450,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="white",
+        margin=dict(l=10,r=10,t=20,b=10),
+
+        xaxis=dict(
+            title="Attendance %",
+            gridcolor="#ece8e1",
+            zeroline=False,
+        ),
+
+        yaxis=dict(
+            title="Previous Score",
+            gridcolor="#ece8e1",
+            zeroline=False,
+        ),
+
+        font=dict(
+            family="Nunito, sans-serif",
+            color="#2d2926"
+        ),
+    )
+
+    return fig
+    
+def top_students_cards():
+    df = teacher_df.copy()
+
+    df["RiskValue"] = (
+        df["Chance of Failing"]
+        .str.rstrip("%")
+        .astype(float)
+    )
+
+    top = df.sort_values(
+        by="RiskValue",
+        ascending=False
+    ).head(3)
+
+    cards_html = ""
+
+    for _, row in top.iterrows():
+
+        att = float(row["Attendance"].rstrip("%"))
+
+        if att < 60:
+            reason = "Low attendance"
+            action = "Contact parents"
+        else:
+            reason = "Low academic performance"
+            action = "Schedule tutoring"
+
+        cards_html += f'''
+        <div style="
+            background:white;
+            border:1.5px solid #fee2e2;
+            border-left:6px solid #dc2626;
+            border-radius:18px;
+            padding:1rem;
+            margin-bottom:1rem;
+            box-shadow:0 4px 12px rgba(0,0,0,0.05);
+        ">
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:0.5rem;
+            ">
+                <div style="
+                    font-size:1rem;
+                    font-weight:800;
+                    color:#2d2926;
+                ">
+                    🚨 {row["Student"]}
+                </div>
+
+                <div style="
+                    background:#fee2e2;
+                    color:#dc2626;
+                    padding:4px 10px;
+                    border-radius:20px;
+                    font-size:0.75rem;
+                    font-weight:700;
+                ">
+                    {row["Chance of Failing"]}
+                </div>
+            </div>
+
+            <div style="
+                font-size:0.82rem;
+                color:#8a8078;
+                margin-bottom:0.4rem;
+            ">
+                Main issue: <b>{reason}</b>
+            </div>
+
+            <div style="
+                font-size:0.82rem;
+                color:#2d2926;
+            ">
+                Suggested action:
+                <b>{action}</b>
+            </div>
+        </div>
+        '''
+
+    return cards_html
 # ──────────────────────────────────────────────
 # SIDEBAR
 # ──────────────────────────────────────────────
@@ -560,34 +651,114 @@ if "Teacher" in view:
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
     # ── Two Plotly charts
-    ch_left, ch_right = st.columns([2, 1])
+    # ─────────────────────────────────────
+# FEATURE IMPORTANCE
+# ─────────────────────────────────────
 
-    with ch_left:
-        st.markdown("""
-        <div style='font-family:Lora,serif; font-size:1.25rem; font-weight:600;
-                    color:#2d2926; margin-bottom:0.2rem;'>
-            📊 What affects students most?</div>
-        <div style='font-size:0.85rem; color:#8a8078; margin-bottom:0.6rem;'>
-            The longer the bar, the bigger the impact on passing or failing.
-            Hover over any bar to learn more. 👆</div>
-        """, unsafe_allow_html=True)
-        with st.spinner("Building chart…"):
-            st.plotly_chart(plotly_feature_impact(), use_container_width=True,
-                            config={"displayModeBar": False})
+st.markdown("""
+<div style='font-family:Lora,serif;
+            font-size:1.35rem;
+            font-weight:600;
+            color:#2d2926;
+            margin-bottom:0.2rem;'>
+    📊 What impacts student success the most?
+</div>
 
-    with ch_right:
-        st.markdown("""
-        <div style='font-family:Lora,serif; font-size:1.25rem; font-weight:600;
-                    color:#2d2926; margin-bottom:0.2rem;'>
-            🎯 Class Risk Split</div>
-        <div style='font-size:0.85rem; color:#8a8078; margin-bottom:0.6rem;'>
-            How your class is distributed across risk levels.</div>
-        """, unsafe_allow_html=True)
-        st.plotly_chart(plotly_risk_donut(), use_container_width=True,
-                        config={"displayModeBar": False})
+<div style='font-size:0.86rem;
+            color:#8a8078;
+            margin-bottom:0.8rem;'>
+    These are the strongest factors influencing whether students succeed or struggle.
+</div>
+""", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+st.plotly_chart(
+    plotly_feature_impact(),
+    use_container_width=True,
+    config={"displayModeBar": False}
+)
 
+st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────
+# SCATTER + TOP STUDENTS
+# ─────────────────────────────────────
+
+left,right = st.columns([2.2,1])
+
+with left:
+
+    st.markdown("""
+    <div style='font-family:Lora,serif;
+                font-size:1.25rem;
+                font-weight:600;
+                color:#2d2926;
+                margin-bottom:0.2rem;'>
+        🎯 Attendance vs Performance
+    </div>
+
+    <div style='font-size:0.84rem;
+                color:#8a8078;
+                margin-bottom:0.6rem;'>
+        Bigger circles = higher failure risk.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.plotly_chart(
+        plotly_scatter_students(),
+        use_container_width=True,
+        config={"displayModeBar": False}
+    )
+
+with right:
+
+    st.markdown("""
+    <div style='font-family:Lora,serif;
+                font-size:1.25rem;
+                font-weight:600;
+                color:#2d2926;
+                margin-bottom:0.2rem;'>
+        🚨 Students Needing Attention
+    </div>
+
+    <div style='font-size:0.84rem;
+                color:#8a8078;
+                margin-bottom:0.8rem;'>
+        Highest predicted failure risk in the class.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(
+        top_students_cards(),
+        unsafe_allow_html=True
+    )
+
+st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────
+# CLASS RISK DONUT
+# ─────────────────────────────────────
+
+st.markdown("""
+<div style='font-family:Lora,serif;
+            font-size:1.25rem;
+            font-weight:600;
+            color:#2d2926;
+            margin-bottom:0.2rem;'>
+    🎯 Class Risk Distribution
+</div>
+
+<div style='font-size:0.84rem;
+            color:#8a8078;
+            margin-bottom:0.6rem;'>
+    Overall distribution of student risk levels.
+</div>
+""", unsafe_allow_html=True)
+
+st.plotly_chart(
+    plotly_risk_donut(),
+    use_container_width=True,
+    config={"displayModeBar": False}
+)
     # Interventions
     st.markdown("""
     <div style='font-family:Lora,serif; font-size:1.25rem; font-weight:600;
