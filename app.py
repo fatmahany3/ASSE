@@ -255,36 +255,36 @@ def fig_donut(prob_fail, risk):
     plt.tight_layout(pad=0)
     return fig
 
-def fig_shap_simple(shap_vals, feature_names):
-    order = np.argsort(np.abs(shap_vals))[::-1][:8]
-    vals  = shap_vals[order]
-    names = [PRETTY.get(feature_names[i], feature_names[i]) for i in order]
+# def fig_shap_simple(shap_vals, feature_names):
+#     order = np.argsort(np.abs(shap_vals))[::-1][:8]
+#     vals  = shap_vals[order]
+#     names = [PRETTY.get(feature_names[i], feature_names[i]) for i in order]
 
-    fig, ax = plt.subplots(figsize=(7.5, 4.2))
-    fig.patch.set_alpha(0); ax.set_facecolor("none")
+#     fig, ax = plt.subplots(figsize=(7.5, 4.2))
+#     fig.patch.set_alpha(0); ax.set_facecolor("none")
 
-    colors = ["#dc2626" if v>0 else "#2d9e6b" for v in vals]
-    alphas = [min(1.0, 0.55 + abs(v)*2) for v in vals]
-    for i,(v,c,a) in enumerate(zip(vals, colors, alphas)):
-        ax.barh(i, v, color=c, alpha=a, height=0.55, linewidth=0, zorder=3)
+#     colors = ["#dc2626" if v>0 else "#2d9e6b" for v in vals]
+#     alphas = [min(1.0, 0.55 + abs(v)*2) for v in vals]
+#     for i,(v,c,a) in enumerate(zip(vals, colors, alphas)):
+#         ax.barh(i, v, color=c, alpha=a, height=0.55, linewidth=0, zorder=3)
 
-    ax.set_yticks(range(len(names)))
-    ax.set_yticklabels(names, fontsize=10, color="#2d2926", fontweight="600")
-    ax.axvline(0, color="#c9c2b9", lw=1.5, zorder=2)
-    ax.tick_params(axis="x", colors="#c9c2b9", labelsize=8)
-    ax.spines[["top","right","left","bottom"]].set_visible(False)
-    ax.set_xlabel("← Helps you pass              Hurts your chances →",
-                  color="#8a8078", fontsize=8.5, labelpad=6)
-    ax.grid(axis="x", color="#ece8e1", lw=0.8, zorder=1)
-    lim = max(abs(vals).max()+0.12, 0.2)
-    ax.set_xlim(-lim, lim)
+#     ax.set_yticks(range(len(names)))
+#     ax.set_yticklabels(names, fontsize=10, color="#2d2926", fontweight="600")
+#     ax.axvline(0, color="#c9c2b9", lw=1.5, zorder=2)
+#     ax.tick_params(axis="x", colors="#c9c2b9", labelsize=8)
+#     ax.spines[["top","right","left","bottom"]].set_visible(False)
+#     ax.set_xlabel("← Helps you pass              Hurts your chances →",
+#                   color="#8a8078", fontsize=8.5, labelpad=6)
+#     ax.grid(axis="x", color="#ece8e1", lw=0.8, zorder=1)
+#     lim = max(abs(vals).max()+0.12, 0.2)
+#     ax.set_xlim(-lim, lim)
 
-    rp = mpatches.Patch(color="#dc2626", alpha=0.8, label="🔴 Working against you")
-    gp = mpatches.Patch(color="#2d9e6b", alpha=0.8, label="🟢 Working for you")
-    ax.legend(handles=[gp,rp], loc="lower right", fontsize=8,
-              framealpha=0, labelcolor="#2d2926")
-    plt.tight_layout(pad=0.5)
-    return fig
+#     rp = mpatches.Patch(color="#dc2626", alpha=0.8, label="🔴 Working against you")
+#     gp = mpatches.Patch(color="#2d9e6b", alpha=0.8, label="🟢 Working for you")
+#     ax.legend(handles=[gp,rp], loc="lower right", fontsize=8,
+#               framealpha=0, labelcolor="#2d2926")
+#     plt.tight_layout(pad=0.5)
+#     return fig
 
 def plotly_feature_impact():
     """
