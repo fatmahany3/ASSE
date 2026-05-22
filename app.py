@@ -141,7 +141,7 @@ def load_everything():
     rows = []
     for i in range(len(X_test)):
         raw = X_test.iloc[i].to_dict()
-        pf  = float(model.predict_proba(X_test_scaled[i:i+1])[0][0])
+        pf  = float(model.predict_proba(X_test_scaled[i:i+1])[0][1])
         rl  = "🔴 High" if pf >= 0.7 else ("🟡 Medium" if pf >= 0.4 else "🟢 Low")
         rows.append({
             "Student": f"Student {i+1:03d}",
@@ -230,8 +230,14 @@ def get_recs(raw, shap_vals, feat, n=3):
 def run_prediction(raw):
     row       = pd.DataFrame([raw])[feature_columns]
     scaled    = scaler.transform(row)
-    prob_fail = float(model.predict_proba(scaled)[0][0])
-    shap_vals = explainer.shap_values(scaled)[0]
+    prob_fail = float(model.predict_proba(scaled)[0][1])
+
+    shap_values = explainer.shap_values(scaled)
+    
+    if isinstance(shap_values, list):
+        shap_vals = shap_values[1][0]
+    else:
+        shap_vals = shap_values[0]
     risk      = "HIGH" if prob_fail>=0.7 else ("MEDIUM" if prob_fail>=0.4 else "LOW")
     recs      = get_recs(raw, shap_vals, feature_columns)
     return prob_fail, shap_vals, risk, recs
@@ -317,7 +323,12 @@ TIP_TEXT = {
  
 # ── 1. Feature Importance ─────────────────────────────────
 def plotly_feature_impact():
-    shap_all  = explainer.shap_values(X_test_scaled)
+    shap_values = explainer.shap_values(X_test_scaled)
+
+    if isinstance(shap_values, list):
+        shap_all = shap_values[1]
+    else:
+        shap_all = shap_values
     mean_vals = shap_all.mean(axis=0)
     mean_abs  = np.abs(shap_all).mean(axis=0)
  
